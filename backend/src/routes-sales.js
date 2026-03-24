@@ -11,8 +11,8 @@ router.use(authMiddleware);
 // GET /api/sales/clients
 router.get('/clients', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [results] = await pool.query('SELECT ClientId, FirstName, LastName, Email, Phone, Address, RegistrationDate FROM Clients ORDER BY FirstName');
+    const db = await getDbPool();
+    const results = await db.all('SELECT ClientId, FirstName, LastName, Email, Phone, Address, RegistrationDate FROM Clients ORDER BY FirstName');
     return res.json(results);
   } catch (err) {
     console.error('Get clients error', err);
@@ -23,9 +23,9 @@ router.get('/clients', async (req, res) => {
 // GET /api/sales/clients/:id
 router.get('/clients/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [results] = await pool.query('SELECT ClientId, FirstName, LastName, Email, Phone, Address, RegistrationDate FROM Clients WHERE ClientId = ?', [req.params.id]);
-    if (results.length === 0) {
+    const db = await getDbPool();
+    const results = await db.all('SELECT ClientId, FirstName, LastName, Email, Phone, Address, RegistrationDate FROM Clients WHERE ClientId = ?', [req.params.id]);
+    if (!results || results.length === 0) {
       return res.status(404).json({ message: 'Client not found' });
     }
     return res.json(results[0]);
@@ -42,10 +42,10 @@ router.post('/clients', async (req, res) => {
     return res.status(400).json({ message: 'FirstName, LastName, and Email are required' });
   }
   try {
-    const pool = await getDbPool();
-    const result = await pool.query(`INSERT INTO Clients (FirstName, LastName, Email, Phone, Address)
+    const db = await getDbPool();
+    const result = await db.run(`INSERT INTO Clients (FirstName, LastName, Email, Phone, Address)
               VALUES (?, ?, ?, ?, ?)`, [firstName, lastName, email, phone || null, address || null]);
-    const [inserted] = await pool.query('SELECT ClientId, FirstName, LastName, Email, Phone, Address, RegistrationDate FROM Clients WHERE ClientId = ?', [result.insertId]);
+    const inserted = await db.all('SELECT ClientId, FirstName, LastName, Email, Phone, Address, RegistrationDate FROM Clients WHERE ClientId = ?', [result.lastID]);
     return res.status(201).json(inserted[0]);
   } catch (err) {
     console.error('Create client error', err);
@@ -56,20 +56,20 @@ router.post('/clients', async (req, res) => {
 // PUT /api/sales/clients/:id
 router.put('/clients/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [existing] = await pool.query('SELECT ClientId FROM Clients WHERE ClientId = ?', [req.params.id]);
-    if (existing.length === 0) {
+    const db = await getDbPool();
+    const existing = await db.all('SELECT ClientId FROM Clients WHERE ClientId = ?', [req.params.id]);
+    if (!existing || existing.length === 0) {
       return res.status(404).json({ message: 'Client not found' });
     }
     const { firstName, lastName, email, phone, address } = req.body;
-    await pool.query(`UPDATE Clients
+    await db.run(`UPDATE Clients
               SET FirstName = COALESCE(?, FirstName),
                   LastName = COALESCE(?, LastName),
                   Email = COALESCE(?, Email),
                   Phone = COALESCE(?, Phone),
                   Address = COALESCE(?, Address)
               WHERE ClientId = ?`, [firstName || null, lastName || null, email || null, phone || null, address || null, req.params.id]);
-    const [updated] = await pool.query('SELECT ClientId, FirstName, LastName, Email, Phone, Address, RegistrationDate FROM Clients WHERE ClientId = ?', [req.params.id]);
+    const updated = await db.all('SELECT ClientId, FirstName, LastName, Email, Phone, Address, RegistrationDate FROM Clients WHERE ClientId = ?', [req.params.id]);
     return res.json(updated[0]);
   } catch (err) {
     console.error('Update client error', err);
@@ -80,12 +80,12 @@ router.put('/clients/:id', async (req, res) => {
 // DELETE /api/sales/clients/:id
 router.delete('/clients/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [existing] = await pool.query('SELECT ClientId FROM Clients WHERE ClientId = ?', [req.params.id]);
-    if (existing.length === 0) {
+    const db = await getDbPool();
+    const existing = await db.all('SELECT ClientId FROM Clients WHERE ClientId = ?', [req.params.id]);
+    if (!existing || existing.length === 0) {
       return res.status(404).json({ message: 'Client not found' });
     }
-    await pool.query('DELETE FROM Clients WHERE ClientId = ?', [req.params.id]);
+    await db.run('DELETE FROM Clients WHERE ClientId = ?', [req.params.id]);
     return res.status(204).send();
   } catch (err) {
     console.error('Delete client error', err);
@@ -98,7 +98,7 @@ router.delete('/clients/:id', async (req, res) => {
 // GET /api/sales/tickets?eventId=x&status=x
 router.get('/tickets', async (req, res) => {
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
     let query = `SELECT TicketId, EventId, SectorId, SeatNumber, Price, Status, TicketType, CreatedAt FROM Tickets`;
     const params = [];
     
@@ -115,7 +115,7 @@ router.get('/tickets', async (req, res) => {
       params.push(req.query.status);
     }
     query += ' ORDER BY SeatNumber';
-    const [results] = await pool.query(query, params);
+    const results = await db.all(query, params);
     return res.json(results);
   } catch (err) {
     console.error('Get tickets error', err);
@@ -126,9 +126,9 @@ router.get('/tickets', async (req, res) => {
 // GET /api/sales/tickets/:id
 router.get('/tickets/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [results] = await pool.query('SELECT TicketId, EventId, SectorId, SeatNumber, Price, Status, TicketType, CreatedAt FROM Tickets WHERE TicketId = ?', [req.params.id]);
-    if (results.length === 0) {
+    const db = await getDbPool();
+    const results = await db.all('SELECT TicketId, EventId, SectorId, SeatNumber, Price, Status, TicketType, CreatedAt FROM Tickets WHERE TicketId = ?', [req.params.id]);
+    if (!results || results.length === 0) {
       return res.status(404).json({ message: 'Ticket not found' });
     }
     return res.json(results[0]);
@@ -145,10 +145,10 @@ router.post('/tickets', async (req, res) => {
     return res.status(400).json({ message: 'EventId, SectorId, SeatNumber, and Price are required' });
   }
   try {
-    const pool = await getDbPool();
-    const result = await pool.query(`INSERT INTO Tickets (EventId, SectorId, SeatNumber, Price, Status, TicketType)
+    const db = await getDbPool();
+    const result = await db.run(`INSERT INTO Tickets (EventId, SectorId, SeatNumber, Price, Status, TicketType)
               VALUES (?, ?, ?, ?, 'Available', ?)`, [eventId, sectorId, seatNumber, price, ticketType || 'General']);
-    const [inserted] = await pool.query('SELECT TicketId, EventId, SectorId, SeatNumber, Price, Status, TicketType, CreatedAt FROM Tickets WHERE TicketId = ?', [result.insertId]);
+    const inserted = await db.all('SELECT TicketId, EventId, SectorId, SeatNumber, Price, Status, TicketType, CreatedAt FROM Tickets WHERE TicketId = ?', [result.lastID]);
     return res.status(201).json(inserted[0]);
   } catch (err) {
     console.error('Create ticket error', err);
@@ -159,18 +159,18 @@ router.post('/tickets', async (req, res) => {
 // PUT /api/sales/tickets/:id
 router.put('/tickets/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [existing] = await pool.query('SELECT TicketId FROM Tickets WHERE TicketId = ?', [req.params.id]);
-    if (existing.length === 0) {
+    const db = await getDbPool();
+    const existing = await db.all('SELECT TicketId FROM Tickets WHERE TicketId = ?', [req.params.id]);
+    if (!existing || existing.length === 0) {
       return res.status(404).json({ message: 'Ticket not found' });
     }
     const { price, status, ticketType } = req.body;
-    await pool.query(`UPDATE Tickets
+    await db.run(`UPDATE Tickets
               SET Price = COALESCE(?, Price),
                   Status = COALESCE(?, Status),
                   TicketType = COALESCE(?, TicketType)
               WHERE TicketId = ?`, [price || null, status || null, ticketType || null, req.params.id]);
-    const [updated] = await pool.query('SELECT TicketId, EventId, SectorId, SeatNumber, Price, Status, TicketType, CreatedAt FROM Tickets WHERE TicketId = ?', [req.params.id]);
+    const updated = await db.all('SELECT TicketId, EventId, SectorId, SeatNumber, Price, Status, TicketType, CreatedAt FROM Tickets WHERE TicketId = ?', [req.params.id]);
     return res.json(updated[0]);
   } catch (err) {
     console.error('Update ticket error', err);
@@ -181,12 +181,12 @@ router.put('/tickets/:id', async (req, res) => {
 // DELETE /api/sales/tickets/:id
 router.delete('/tickets/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [existing] = await pool.query('SELECT TicketId FROM Tickets WHERE TicketId = ?', [req.params.id]);
-    if (existing.length === 0) {
+    const db = await getDbPool();
+    const existing = await db.all('SELECT TicketId FROM Tickets WHERE TicketId = ?', [req.params.id]);
+    if (!existing || existing.length === 0) {
       return res.status(404).json({ message: 'Ticket not found' });
     }
-    await pool.query('DELETE FROM Tickets WHERE TicketId = ?', [req.params.id]);
+    await db.run('DELETE FROM Tickets WHERE TicketId = ?', [req.params.id]);
     return res.status(204).send();
   } catch (err) {
     console.error('Delete ticket error', err);
@@ -199,7 +199,7 @@ router.delete('/tickets/:id', async (req, res) => {
 // GET /api/sales/orders?clientId=x&status=x
 router.get('/orders', async (req, res) => {
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
     let query = `SELECT OrderId, ClientId, OrderDate, TotalAmount, Status, PaymentMethod, CreatedAt, UpdatedAt FROM Orders`;
     const params = [];
     
@@ -216,7 +216,7 @@ router.get('/orders', async (req, res) => {
       params.push(req.query.status);
     }
     query += ' ORDER BY OrderDate DESC';
-    const [results] = await pool.query(query, params);
+    const results = await db.all(query, params);
     return res.json(results);
   } catch (err) {
     console.error('Get orders error', err);
@@ -227,9 +227,9 @@ router.get('/orders', async (req, res) => {
 // GET /api/sales/orders/:id
 router.get('/orders/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [results] = await pool.query('SELECT OrderId, ClientId, OrderDate, TotalAmount, Status, PaymentMethod, CreatedAt, UpdatedAt FROM Orders WHERE OrderId = ?', [req.params.id]);
-    if (results.length === 0) {
+    const db = await getDbPool();
+    const results = await db.all('SELECT OrderId, ClientId, OrderDate, TotalAmount, Status, PaymentMethod, CreatedAt, UpdatedAt FROM Orders WHERE OrderId = ?', [req.params.id]);
+    if (!results || results.length === 0) {
       return res.status(404).json({ message: 'Order not found' });
     }
     return res.json(results[0]);
@@ -246,10 +246,10 @@ router.post('/orders', async (req, res) => {
     return res.status(400).json({ message: 'ClientId is required' });
   }
   try {
-    const pool = await getDbPool();
-    const result = await pool.query(`INSERT INTO Orders (ClientId, TotalAmount, Status, PaymentMethod)
+    const db = await getDbPool();
+    const result = await db.run(`INSERT INTO Orders (ClientId, TotalAmount, Status, PaymentMethod)
               VALUES (?, ?, 'Pending', ?)`, [clientId, totalAmount || 0, paymentMethod || null]);
-    const [inserted] = await pool.query('SELECT OrderId, ClientId, OrderDate, TotalAmount, Status, PaymentMethod, CreatedAt, UpdatedAt FROM Orders WHERE OrderId = ?', [result.insertId]);
+    const inserted = await db.all('SELECT OrderId, ClientId, OrderDate, TotalAmount, Status, PaymentMethod, CreatedAt, UpdatedAt FROM Orders WHERE OrderId = ?', [result.lastID]);
     return res.status(201).json(inserted[0]);
   } catch (err) {
     console.error('Create order error', err);
@@ -260,19 +260,19 @@ router.post('/orders', async (req, res) => {
 // PUT /api/sales/orders/:id
 router.put('/orders/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [existing] = await pool.query('SELECT OrderId FROM Orders WHERE OrderId = ?', [req.params.id]);
-    if (existing.length === 0) {
+    const db = await getDbPool();
+    const existing = await db.all('SELECT OrderId FROM Orders WHERE OrderId = ?', [req.params.id]);
+    if (!existing || existing.length === 0) {
       return res.status(404).json({ message: 'Order not found' });
     }
     const { totalAmount, status, paymentMethod } = req.body;
-    await pool.query(`UPDATE Orders
+    await db.run(`UPDATE Orders
               SET TotalAmount = COALESCE(?, TotalAmount),
                   Status = COALESCE(?, Status),
                   PaymentMethod = COALESCE(?, PaymentMethod),
-                  UpdatedAt = NOW()
+                  UpdatedAt = CURRENT_TIMESTAMP
               WHERE OrderId = ?`, [totalAmount || null, status || null, paymentMethod || null, req.params.id]);
-    const [updated] = await pool.query('SELECT OrderId, ClientId, OrderDate, TotalAmount, Status, PaymentMethod, CreatedAt, UpdatedAt FROM Orders WHERE OrderId = ?', [req.params.id]);
+    const updated = await db.all('SELECT OrderId, ClientId, OrderDate, TotalAmount, Status, PaymentMethod, CreatedAt, UpdatedAt FROM Orders WHERE OrderId = ?', [req.params.id]);
     return res.json(updated[0]);
   } catch (err) {
     console.error('Update order error', err);
@@ -283,12 +283,12 @@ router.put('/orders/:id', async (req, res) => {
 // DELETE /api/sales/orders/:id
 router.delete('/orders/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [existing] = await pool.query('SELECT OrderId FROM Orders WHERE OrderId = ?', [req.params.id]);
-    if (existing.length === 0) {
+    const db = await getDbPool();
+    const existing = await db.all('SELECT OrderId FROM Orders WHERE OrderId = ?', [req.params.id]);
+    if (!existing || existing.length === 0) {
       return res.status(404).json({ message: 'Order not found' });
     }
-    await pool.query('DELETE FROM Orders WHERE OrderId = ?', [req.params.id]);
+    await db.run('DELETE FROM Orders WHERE OrderId = ?', [req.params.id]);
     return res.status(204).send();
   } catch (err) {
     console.error('Delete order error', err);
@@ -301,13 +301,13 @@ router.delete('/orders/:id', async (req, res) => {
 // GET /api/sales/order-details?orderId=x
 router.get('/order-details', async (req, res) => {
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
     let query = `SELECT DetailId, OrderId, TicketId, Quantity, UnitPrice, TotalPrice FROM OrderDetails`;
     if (req.query.orderId) {
-      const [results] = await pool.query(query + ' WHERE OrderId = ?', [req.query.orderId]);
+      const results = await db.all(query + ' WHERE OrderId = ?', [req.query.orderId]);
       return res.json(results);
     }
-    const [results] = await pool.query(query);
+    const results = await db.all(query);
     return res.json(results);
   } catch (err) {
     console.error('Get order details error', err);
@@ -318,9 +318,9 @@ router.get('/order-details', async (req, res) => {
 // GET /api/sales/order-details/:id
 router.get('/order-details/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [results] = await pool.query('SELECT DetailId, OrderId, TicketId, Quantity, UnitPrice, TotalPrice FROM OrderDetails WHERE DetailId = ?', [req.params.id]);
-    if (results.length === 0) {
+    const db = await getDbPool();
+    const results = await db.all('SELECT DetailId, OrderId, TicketId, Quantity, UnitPrice, TotalPrice FROM OrderDetails WHERE DetailId = ?', [req.params.id]);
+    if (!results || results.length === 0) {
       return res.status(404).json({ message: 'Order detail not found' });
     }
     return res.json(results[0]);
@@ -337,10 +337,10 @@ router.post('/order-details', async (req, res) => {
     return res.status(400).json({ message: 'OrderId, TicketId, Quantity, UnitPrice, and TotalPrice are required' });
   }
   try {
-    const pool = await getDbPool();
-    const result = await pool.query(`INSERT INTO OrderDetails (OrderId, TicketId, Quantity, UnitPrice, TotalPrice)
+    const db = await getDbPool();
+    const result = await db.run(`INSERT INTO OrderDetails (OrderId, TicketId, Quantity, UnitPrice, TotalPrice)
               VALUES (?, ?, ?, ?, ?)`, [orderId, ticketId, quantity, unitPrice, totalPrice]);
-    const [inserted] = await pool.query('SELECT DetailId, OrderId, TicketId, Quantity, UnitPrice, TotalPrice FROM OrderDetails WHERE DetailId = ?', [result.insertId]);
+    const inserted = await db.all('SELECT DetailId, OrderId, TicketId, Quantity, UnitPrice, TotalPrice FROM OrderDetails WHERE DetailId = ?', [result.lastID]);
     return res.status(201).json(inserted[0]);
   } catch (err) {
     console.error('Create order detail error', err);
@@ -351,13 +351,13 @@ router.post('/order-details', async (req, res) => {
 // PUT /api/sales/order-details/:id
 router.put('/order-details/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [existing] = await pool.query('SELECT DetailId FROM OrderDetails WHERE DetailId = ?', [req.params.id]);
-    if (existing.length === 0) {
+    const db = await getDbPool();
+    const existing = await db.all('SELECT DetailId FROM OrderDetails WHERE DetailId = ?', [req.params.id]);
+    if (!existing || existing.length === 0) {
       return res.status(404).json({ message: 'Order detail not found' });
     }
     const { quantity, unitPrice, totalPrice } = req.body;
-    await pool.query(`UPDATE OrderDetails
+    await db.run(`UPDATE OrderDetails
               SET Quantity = COALESCE(?, Quantity),
                   UnitPrice = COALESCE(?, UnitPrice),
                   TotalPrice = COALESCE(?, TotalPrice)
@@ -372,12 +372,12 @@ router.put('/order-details/:id', async (req, res) => {
 // DELETE /api/sales/order-details/:id
 router.delete('/order-details/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [existing] = await pool.query('SELECT DetailId FROM OrderDetails WHERE DetailId = ?', [req.params.id]);
-    if (existing.length === 0) {
+    const db = await getDbPool();
+    const existing = await db.all('SELECT DetailId FROM OrderDetails WHERE DetailId = ?', [req.params.id]);
+    if (!existing || existing.length === 0) {
       return res.status(404).json({ message: 'Order detail not found' });
     }
-    await pool.query('DELETE FROM OrderDetails WHERE DetailId = ?', [req.params.id]);
+    await db.run('DELETE FROM OrderDetails WHERE DetailId = ?', [req.params.id]);
     return res.status(204).send();
   } catch (err) {
     console.error('Delete order detail error', err);

@@ -9,8 +9,8 @@ router.use(authMiddleware);
 // GET /api/tickets
 router.get('/', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [results] = await pool.query('SELECT Id, Title, Description, Status, Priority, CreatedAt, UpdatedAt FROM Tickets ORDER BY CreatedAt DESC');
+    const db = await getDbPool();
+    const results = await db.all('SELECT Id, Title, Description, Status, Priority, CreatedAt, UpdatedAt FROM Tickets ORDER BY CreatedAt DESC');
     return res.json(results);
   } catch (err) {
     console.error('Get tickets error', err);
@@ -22,10 +22,10 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    const pool = await getDbPool();
-    const [results] = await pool.query('SELECT Id, Title, Description, Status, Priority, CreatedAt, UpdatedAt FROM Tickets WHERE Id = ?', [id]);
+    const db = await getDbPool();
+    const results = await db.all('SELECT Id, Title, Description, Status, Priority, CreatedAt, UpdatedAt FROM Tickets WHERE Id = ?', [id]);
 
-    if (results.length === 0) {
+    if (!results || results.length === 0) {
       return res.status(404).json({ message: 'Ticket not found' });
     }
 
@@ -44,9 +44,9 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    const pool = await getDbPool();
-    const result = await pool.query('INSERT INTO Tickets (Title, Description, Status, Priority, CreatedAt, UpdatedAt) VALUES (?, ?, ?, ?, NOW(), NOW())', [title, description || '', status, priority]);
-    const [inserted] = await pool.query('SELECT Id, Title, Description, Status, Priority, CreatedAt, UpdatedAt FROM Tickets WHERE Id = ?', [result.insertId]);
+    const db = await getDbPool();
+    const result = await db.run('INSERT INTO Tickets (Title, Description, Status, Priority, CreatedAt, UpdatedAt) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)', [title, description || '', status, priority]);
+    const inserted = await db.all('SELECT Id, Title, Description, Status, Priority, CreatedAt, UpdatedAt FROM Tickets WHERE Id = ?', [result.lastID]);
 
     return res.status(201).json(inserted[0]);
   } catch (err) {
@@ -61,23 +61,23 @@ router.put('/:id', async (req, res) => {
   const { title, description, status, priority } = req.body;
 
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
 
-    const [existing] = await pool.query('SELECT Id FROM Tickets WHERE Id = ?', [id]);
+    const existing = await db.all('SELECT Id FROM Tickets WHERE Id = ?', [id]);
 
-    if (existing.length === 0) {
+    if (!existing || existing.length === 0) {
       return res.status(404).json({ message: 'Ticket not found' });
     }
 
-    await pool.query(`UPDATE Tickets
+    await db.run(`UPDATE Tickets
               SET Title = COALESCE(?, Title),
                   Description = COALESCE(?, Description),
                   Status = COALESCE(?, Status),
                   Priority = COALESCE(?, Priority),
-                  UpdatedAt = NOW()
+                  UpdatedAt = CURRENT_TIMESTAMP
               WHERE Id = ?`, [title || null, description || null, status || null, priority || null, id]);
 
-    const [updated] = await pool.query('SELECT Id, Title, Description, Status, Priority, CreatedAt, UpdatedAt FROM Tickets WHERE Id = ?', [id]);
+    const updated = await db.all('SELECT Id, Title, Description, Status, Priority, CreatedAt, UpdatedAt FROM Tickets WHERE Id = ?', [id]);
 
     return res.json(updated[0]);
   } catch (err) {
@@ -90,15 +90,15 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
 
-    const [existing] = await pool.query('SELECT Id FROM Tickets WHERE Id = ?', [id]);
+    const existing = await db.all('SELECT Id FROM Tickets WHERE Id = ?', [id]);
 
-    if (existing.length === 0) {
+    if (!existing || existing.length === 0) {
       return res.status(404).json({ message: 'Ticket not found' });
     }
 
-    await pool.query('DELETE FROM Tickets WHERE Id = ?', [id]);
+    await db.run('DELETE FROM Tickets WHERE Id = ?', [id]);
 
     return res.status(204).send();
   } catch (err) {

@@ -14,19 +14,24 @@ router.post('/register', async (req, res) => {
   }
 
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
 
-    const [existing] = await pool.query('SELECT Id FROM Users WHERE Email = ?', [email]);
+    const existing = await db.get('SELECT Id FROM Users WHERE Email = ?', [email]);
 
-    if (existing.length > 0) {
+    if (existing) {
       return res.status(409).json({ message: 'User with this email already exists' });
     }
 
     const hash = await bcrypt.hash(password, 10);
+    
+    // Split name into first and last name
+    const nameParts = name.split(' ');
+    const firstName = nameParts[0] || 'User';
+    const lastName = nameParts.slice(1).join(' ') || 'Account';
 
-    await pool.query(
-      'INSERT INTO Users (Name, Email, PasswordHash, CreatedAt) VALUES (?, ?, ?, NOW())',
-      [name, email, hash]
+    await db.run(
+      'INSERT INTO Users (FirstName, LastName, Email, PasswordHash, CreatedAt) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
+      [firstName, lastName, email, hash]
     );
 
     return res.status(201).json({ message: 'User registered' });
@@ -44,18 +49,17 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
 
-    const [results] = await pool.query(
-      'SELECT Id, Name, Email, PasswordHash, IsAdmin FROM Users WHERE Email = ? LIMIT 1',
+    const user = await db.get(
+      'SELECT Id, FirstName, Email, PasswordHash FROM Users WHERE Email = ? LIMIT 1',
       [email]
     );
 
-    if (results.length === 0) {
+    if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    const user = results[0];
     const match = await bcrypt.compare(password, user.PasswordHash);
     if (!match) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -64,9 +68,8 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign(
       {
         userId: user.Id,
-        name: user.Name,
-        email: user.Email,
-        isAdmin: !!user.IsAdmin
+        name: user.FirstName,
+        email: user.Email
       },
       jwtConfig.secret,
       { expiresIn: jwtConfig.expiresIn }

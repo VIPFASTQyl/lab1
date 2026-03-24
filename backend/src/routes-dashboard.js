@@ -17,11 +17,11 @@ router.use((req, res, next) => {
 // GET /api/dashboard/summary
 router.get('/summary', async (req, res) => {
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
 
-    const [totalTicketsResult] = await pool.query('SELECT COUNT(*) as Total FROM Tickets');
-    const [openTicketsResult] = await pool.query('SELECT COUNT(*) as Total FROM Tickets WHERE Status = ?', ['Available']);
-    const [soldTicketsResult] = await pool.query('SELECT COUNT(*) as Total FROM Tickets WHERE Status = ?', ['Sold']);
+    const totalTicketsResult = await db.all('SELECT COUNT(*) as Total FROM Tickets');
+    const openTicketsResult = await db.all('SELECT COUNT(*) as Total FROM Tickets WHERE Status = ?', ['Available']);
+    const soldTicketsResult = await db.all('SELECT COUNT(*) as Total FROM Tickets WHERE Status = ?', ['Sold']);
 
     return res.json({
       totalTickets: totalTicketsResult[0].Total,

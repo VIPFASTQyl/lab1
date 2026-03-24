@@ -14,8 +14,8 @@ router.use(authMiddleware);
 // GET all venues
 router.get('/venues', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [venues] = await pool.query('SELECT * FROM Venues ORDER BY VenueId');
+    const db = await getDbPool();
+    const venues = await db.all('SELECT * FROM Venues ORDER BY VenueId');
     res.json(venues);
   } catch (error) {
     console.error('Error fetching venues:', error);
@@ -26,11 +26,11 @@ router.get('/venues', async (req, res) => {
 // GET venue by ID
 router.get('/venues/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
     const { id } = req.params;
-    const [results] = await pool.query('SELECT * FROM Venues WHERE VenueId = ?', [id]);
+    const results = await db.all('SELECT * FROM Venues WHERE VenueId = ?', [id]);
     
-    if (results.length === 0) {
+    if (!results || results.length === 0) {
       return res.status(404).json({ message: 'Venue not found' });
     }
     res.json(results[0]);
@@ -43,19 +43,19 @@ router.get('/venues/:id', async (req, res) => {
 // POST create new venue
 router.post('/venues', async (req, res) => {
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
     const { Name, Address, City, Capacity, Phone, Email, Description } = req.body;
     
     if (!Name || !Address || !City || !Capacity) {
       return res.status(400).json({ message: 'Name, Address, City, and Capacity are required' });
     }
 
-    const [result] = await pool.query(
+    const result = await db.run(
       'INSERT INTO Venues (Name, Address, City, Capacity, Phone, Email, Description) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [Name, Address, City, Capacity, Phone || null, Email || null, Description || null]
     );
     
-    res.status(201).json({ VenueId: result.insertId, Name, Address, City, Capacity, Phone, Email, Description });
+    res.status(201).json({ VenueId: result.lastID, Name, Address, City, Capacity, Phone, Email, Description });
   } catch (error) {
     console.error('Error creating venue:', error);
     res.status(500).json({ message: 'Error creating venue',error: error.message });
@@ -65,16 +65,16 @@ router.post('/venues', async (req, res) => {
 // PUT update venue
 router.put('/venues/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
     const { id } = req.params;
     const { Name, Address, City, Capacity, Phone, Email, Description } = req.body;
 
-    const [result] = await pool.query(
+    const result = await db.run(
       'UPDATE Venues SET Name = ?, Address = ?, City = ?, Capacity = ?, Phone = ?, Email = ?, Description = ? WHERE VenueId = ?',
       [Name, Address, City, Capacity, Phone, Email, Description, id]
     );
 
-    if (result.affectedRows === 0) {
+    if (result.changes === 0) {
       return res.status(404).json({ message: 'Venue not found' });
     }
     res.json({ message: 'Venue updated successfully' });
@@ -87,11 +87,11 @@ router.put('/venues/:id', async (req, res) => {
 // DELETE venue
 router.delete('/venues/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
     const { id } = req.params;
-    const [result] = await pool.query('DELETE FROM Venues WHERE VenueId = ?', [id]);
+    const result = await db.run('DELETE FROM Venues WHERE VenueId = ?', [id]);
 
-    if (result.affectedRows === 0) {
+    if (result.changes === 0) {
       return res.status(404).json({ message: 'Venue not found' });
     }
     res.status(204).send();
@@ -108,7 +108,7 @@ router.delete('/venues/:id', async (req, res) => {
 // GET all sectors (with optional venueId filter)
 router.get('/sectors', async (req, res) => {
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
     const { venueId } = req.query;
     
     let query = 'SELECT * FROM Sectors';
@@ -120,7 +120,7 @@ router.get('/sectors', async (req, res) => {
     }
 
     query += ' ORDER BY SectorId';
-    const [sectors] = await pool.query(query, params);
+    const sectors = await db.all(query, params);
     res.json(sectors);
   } catch (error) {
     console.error('Error fetching sectors:', error);
@@ -131,11 +131,11 @@ router.get('/sectors', async (req, res) => {
 // GET sector by ID
 router.get('/sectors/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
     const { id } = req.params;
-    const [results] = await pool.query('SELECT * FROM Sectors WHERE SectorId = ?', [id]);
+    const results = await db.all('SELECT * FROM Sectors WHERE SectorId = ?', [id]);
     
-    if (results.length === 0) {
+    if (!results || results.length === 0) {
       return res.status(404).json({ message: 'Sector not found' });
     }
     res.json(results[0]);
@@ -148,19 +148,19 @@ router.get('/sectors/:id', async (req, res) => {
 // POST create new sector
 router.post('/sectors', async (req, res) => {
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
     const { VenueId, SectorName, Capacity, BasePrice, Description } = req.body;
     
     if (!VenueId || !SectorName || !Capacity || BasePrice === undefined) {
       return res.status(400).json({ message: 'VenueId, SectorName, Capacity, and BasePrice are required' });
     }
 
-    const [result] = await pool.query(
+    const result = await db.run(
       'INSERT INTO Sectors (VenueId, SectorName, Capacity, BasePrice, Description) VALUES (?, ?, ?, ?, ?)',
       [VenueId, SectorName, Capacity, BasePrice, Description || null]
     );
     
-    res.status(201).json({ SectorId: result.insertId, VenueId, SectorName, Capacity, BasePrice, Description });
+    res.status(201).json({ SectorId: result.lastID, VenueId, SectorName, Capacity, BasePrice, Description });
   } catch (error) {
     console.error('Error creating sector:', error);
     res.status(500).json({ message: 'Error creating sector', error: error.message });
@@ -170,16 +170,16 @@ router.post('/sectors', async (req, res) => {
 // PUT update sector
 router.put('/sectors/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
     const { id } = req.params;
     const { SectorName, Capacity, BasePrice, Description } = req.body;
 
-    const [result] = await pool.query(
+    const result = await db.run(
       'UPDATE Sectors SET SectorName = ?, Capacity = ?, BasePrice = ?, Description = ? WHERE SectorId = ?',
       [SectorName, Capacity, BasePrice, Description, id]
     );
 
-    if (result.affectedRows === 0) {
+    if (result.changes === 0) {
       return res.status(404).json({ message: 'Sector not found' });
     }
     res.json({ message: 'Sector updated successfully' });
@@ -192,11 +192,11 @@ router.put('/sectors/:id', async (req, res) => {
 // DELETE sector
 router.delete('/sectors/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
     const { id } = req.params;
-    const [result] = await pool.query('DELETE FROM Sectors WHERE SectorId = ?', [id]);
+    const result = await db.run('DELETE FROM Sectors WHERE SectorId = ?', [id]);
 
-    if (result.affectedRows === 0) {
+    if (result.changes === 0) {
       return res.status(404).json({ message: 'Sector not found' });
     }
     res.status(204).send();
@@ -213,8 +213,8 @@ router.delete('/sectors/:id', async (req, res) => {
 // GET all events
 router.get('/events', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [events] = await pool.query('SELECT * FROM Events ORDER BY EventDate DESC');
+    const db = await getDbPool();
+    const events = await db.all('SELECT * FROM Events ORDER BY EventDate DESC');
     res.json(events);
   } catch (error) {
     console.error('Error fetching events:', error);
@@ -225,11 +225,11 @@ router.get('/events', async (req, res) => {
 // GET event by ID
 router.get('/events/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
     const { id } = req.params;
-    const [results] = await pool.query('SELECT * FROM Events WHERE EventId = ?', [id]);
+    const results = await db.all('SELECT * FROM Events WHERE EventId = ?', [id]);
     
-    if (results.length === 0) {
+    if (!results || results.length === 0) {
       return res.status(404).json({ message: 'Event not found' });
     }
     res.json(results[0]);
@@ -242,19 +242,19 @@ router.get('/events/:id', async (req, res) => {
 // POST create new event
 router.post('/events', async (req, res) => {
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
     const { Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status } = req.body;
     
     if (!Title || !Category || !EventDate || !VenueId) {
       return res.status(400).json({ message: 'Title, Category, EventDate, and VenueId are required' });
     }
 
-    const [result] = await pool.query(
+    const result = await db.run(
       'INSERT INTO Events (Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [Title, Description || null, Category, EventDate, StartTime || null, EndTime || null, VenueId, Status || 'Upcoming']
     );
     
-    res.status(201).json({ EventId: result.insertId, Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status });
+    res.status(201).json({ EventId: result.lastID, Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status });
   } catch (error) {
     console.error('Error creating event:', error);
     res.status(500).json({ message: 'Error creating event', error: error.message });
@@ -264,16 +264,16 @@ router.post('/events', async (req, res) => {
 // PUT update event
 router.put('/events/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
     const { id } = req.params;
     const { Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status } = req.body;
 
-    const [result] = await pool.query(
+    const result = await db.run(
       'UPDATE Events SET Title = ?, Description = ?, Category = ?, EventDate = ?, StartTime = ?, EndTime = ?, VenueId = ?, Status = ? WHERE EventId = ?',
       [Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status, id]
     );
 
-    if (result.affectedRows === 0) {
+    if (result.changes === 0) {
       return res.status(404).json({ message: 'Event not found' });
     }
     res.json({ message: 'Event updated successfully' });
@@ -286,11 +286,11 @@ router.put('/events/:id', async (req, res) => {
 // DELETE event
 router.delete('/events/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
     const { id } = req.params;
-    const [result] = await pool.query('DELETE FROM Events WHERE EventId = ?', [id]);
+    const result = await db.run('DELETE FROM Events WHERE EventId = ?', [id]);
 
-    if (result.affectedRows === 0) {
+    if (result.changes === 0) {
       return res.status(404).json({ message: 'Event not found' });
     }
     res.status(204).send();

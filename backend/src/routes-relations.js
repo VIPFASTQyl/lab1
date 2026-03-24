@@ -11,7 +11,7 @@ router.use(authMiddleware);
 // GET /api/relations/event-organizers?eventId=x&organizerId=x
 router.get('/event-organizers', async (req, res) => {
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
     let query = `SELECT EventOrganizerId, EventId, OrganizerId, Role, Notes FROM EventOrganizers`;
     const params = [];
     
@@ -28,7 +28,7 @@ router.get('/event-organizers', async (req, res) => {
       params.push(req.query.organizerId);
     }
     query += ' ORDER BY EventId, Role';
-    const [results] = await pool.query(query, params);
+    const results = await db.all(query, params);
     return res.json(results);
   } catch (err) {
     console.error('Get event organizers error', err);
@@ -39,9 +39,9 @@ router.get('/event-organizers', async (req, res) => {
 // GET /api/relations/event-organizers/:id
 router.get('/event-organizers/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [results] = await pool.query('SELECT EventOrganizerId, EventId, OrganizerId, Role, Notes FROM EventOrganizers WHERE EventOrganizerId = ?', [req.params.id]);
-    if (results.length === 0) {
+    const db = await getDbPool();
+    const results = await db.all('SELECT EventOrganizerId, EventId, OrganizerId, Role, Notes FROM EventOrganizers WHERE EventOrganizerId = ?', [req.params.id]);
+    if (!results || results.length === 0) {
       return res.status(404).json({ message: 'Event organizer relationship not found' });
     }
     return res.json(results[0]);
@@ -58,10 +58,10 @@ router.post('/event-organizers', async (req, res) => {
     return res.status(400).json({ message: 'EventId and OrganizerId are required' });
   }
   try {
-    const pool = await getDbPool();
-    const result = await pool.query(`INSERT INTO EventOrganizers (EventId, OrganizerId, Role, Notes)
+    const db = await getDbPool();
+    const result = await db.run(`INSERT INTO EventOrganizers (EventId, OrganizerId, Role, Notes)
               VALUES (?, ?, ?, ?)`, [eventId, organizerId, role || null, notes || null]);
-    const [inserted] = await pool.query('SELECT EventOrganizerId, EventId, OrganizerId, Role, Notes FROM EventOrganizers WHERE EventOrganizerId = ?', [result.insertId]);
+    const inserted = await db.all('SELECT EventOrganizerId, EventId, OrganizerId, Role, Notes FROM EventOrganizers WHERE EventOrganizerId = ?', [result.lastID]);
     return res.status(201).json(inserted[0]);
   } catch (err) {
     console.error('Create event organizer error', err);
@@ -72,17 +72,17 @@ router.post('/event-organizers', async (req, res) => {
 // PUT /api/relations/event-organizers/:id
 router.put('/event-organizers/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [existing] = await pool.query('SELECT EventOrganizerId FROM EventOrganizers WHERE EventOrganizerId = ?', [req.params.id]);
-    if (existing.length === 0) {
+    const db = await getDbPool();
+    const existing = await db.all('SELECT EventOrganizerId FROM EventOrganizers WHERE EventOrganizerId = ?', [req.params.id]);
+    if (!existing || existing.length === 0) {
       return res.status(404).json({ message: 'Event organizer relationship not found' });
     }
     const { role, notes } = req.body;
-    await pool.query(`UPDATE EventOrganizers
+    await db.run(`UPDATE EventOrganizers
               SET Role = COALESCE(?, Role),
                   Notes = COALESCE(?, Notes)
               WHERE EventOrganizerId = ?`, [role || null, notes || null, req.params.id]);
-    const [updated] = await pool.query('SELECT EventOrganizerId, EventId, OrganizerId, Role, Notes FROM EventOrganizers WHERE EventOrganizerId = ?', [req.params.id]);
+    const updated = await db.all('SELECT EventOrganizerId, EventId, OrganizerId, Role, Notes FROM EventOrganizers WHERE EventOrganizerId = ?', [req.params.id]);
     return res.json(updated[0]);
   } catch (err) {
     console.error('Update event organizer error', err);
@@ -93,12 +93,12 @@ router.put('/event-organizers/:id', async (req, res) => {
 // DELETE /api/relations/event-organizers/:id
 router.delete('/event-organizers/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [existing] = await pool.query('SELECT EventOrganizerId FROM EventOrganizers WHERE EventOrganizerId = ?', [req.params.id]);
-    if (existing.length === 0) {
+    const db = await getDbPool();
+    const existing = await db.all('SELECT EventOrganizerId FROM EventOrganizers WHERE EventOrganizerId = ?', [req.params.id]);
+    if (!existing || existing.length === 0) {
       return res.status(404).json({ message: 'Event organizer relationship not found' });
     }
-    await pool.query('DELETE FROM EventOrganizers WHERE EventOrganizerId = ?', [req.params.id]);
+    await db.run('DELETE FROM EventOrganizers WHERE EventOrganizerId = ?', [req.params.id]);
     return res.status(204).send();
   } catch (err) {
     console.error('Delete event organizer error', err);

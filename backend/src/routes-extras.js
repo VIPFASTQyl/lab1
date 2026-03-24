@@ -11,7 +11,7 @@ router.use(authMiddleware);
 // GET /api/extras/payments?orderId=x&status=x
 router.get('/payments', async (req, res) => {
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
     let query = `SELECT PaymentId, OrderId, PaymentDate, Amount, PaymentMethod, Status, Reference, CreatedAt FROM Payments`;
     const params = [];
     
@@ -28,7 +28,7 @@ router.get('/payments', async (req, res) => {
       params.push(req.query.status);
     }
     query += ' ORDER BY PaymentDate DESC';
-    const [results] = await pool.query(query, params);
+    const results = await db.all(query, params);
     return res.json(results);
   } catch (err) {
     console.error('Get payments error', err);
@@ -39,9 +39,9 @@ router.get('/payments', async (req, res) => {
 // GET /api/extras/payments/:id
 router.get('/payments/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [results] = await pool.query('SELECT PaymentId, OrderId, PaymentDate, Amount, PaymentMethod, Status, Reference, CreatedAt FROM Payments WHERE PaymentId = ?', [req.params.id]);
-    if (results.length === 0) {
+    const db = await getDbPool();
+    const results = await db.all('SELECT PaymentId, OrderId, PaymentDate, Amount, PaymentMethod, Status, Reference, CreatedAt FROM Payments WHERE PaymentId = ?', [req.params.id]);
+    if (!results || results.length === 0) {
       return res.status(404).json({ message: 'Payment not found' });
     }
     return res.json(results[0]);
@@ -58,10 +58,10 @@ router.post('/payments', async (req, res) => {
     return res.status(400).json({ message: 'OrderId, Amount, and PaymentMethod are required' });
   }
   try {
-    const pool = await getDbPool();
-    const result = await pool.query(`INSERT INTO Payments (OrderId, Amount, PaymentMethod, Status, Reference)
+    const db = await getDbPool();
+    const result = await db.run(`INSERT INTO Payments (OrderId, Amount, PaymentMethod, Status, Reference)
               VALUES (?, ?, ?, 'Pending', ?)`, [orderId, amount, paymentMethod, reference || null]);
-    const [inserted] = await pool.query('SELECT PaymentId, OrderId, PaymentDate, Amount, PaymentMethod, Status, Reference, CreatedAt FROM Payments WHERE PaymentId = ?', [result.insertId]);
+    const inserted = await db.all('SELECT PaymentId, OrderId, PaymentDate, Amount, PaymentMethod, Status, Reference, CreatedAt FROM Payments WHERE PaymentId = ?', [result.lastID]);
     return res.status(201).json(inserted[0]);
   } catch (err) {
     console.error('Create payment error', err);
@@ -72,18 +72,18 @@ router.post('/payments', async (req, res) => {
 // PUT /api/extras/payments/:id
 router.put('/payments/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [existing] = await pool.query('SELECT PaymentId FROM Payments WHERE PaymentId = ?', [req.params.id]);
-    if (existing.length === 0) {
+    const db = await getDbPool();
+    const existing = await db.all('SELECT PaymentId FROM Payments WHERE PaymentId = ?', [req.params.id]);
+    if (!existing || existing.length === 0) {
       return res.status(404).json({ message: 'Payment not found' });
     }
     const { amount, status, reference } = req.body;
-    await pool.query(`UPDATE Payments
+    await db.run(`UPDATE Payments
               SET Amount = COALESCE(?, Amount),
                   Status = COALESCE(?, Status),
                   Reference = COALESCE(?, Reference)
               WHERE PaymentId = ?`, [amount || null, status || null, reference || null, req.params.id]);
-    const [updated] = await pool.query('SELECT PaymentId, OrderId, PaymentDate, Amount, PaymentMethod, Status, Reference, CreatedAt FROM Payments WHERE PaymentId = ?', [req.params.id]);
+    const updated = await db.all('SELECT PaymentId, OrderId, PaymentDate, Amount, PaymentMethod, Status, Reference, CreatedAt FROM Payments WHERE PaymentId = ?', [req.params.id]);
     return res.json(updated[0]);
   } catch (err) {
     console.error('Update payment error', err);
@@ -94,12 +94,12 @@ router.put('/payments/:id', async (req, res) => {
 // DELETE /api/extras/payments/:id
 router.delete('/payments/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [existing] = await pool.query('SELECT PaymentId FROM Payments WHERE PaymentId = ?', [req.params.id]);
-    if (existing.length === 0) {
+    const db = await getDbPool();
+    const existing = await db.all('SELECT PaymentId FROM Payments WHERE PaymentId = ?', [req.params.id]);
+    if (!existing || existing.length === 0) {
       return res.status(404).json({ message: 'Payment not found' });
     }
-    await pool.query('DELETE FROM Payments WHERE PaymentId = ?', [req.params.id]);
+    await db.run('DELETE FROM Payments WHERE PaymentId = ?', [req.params.id]);
     return res.status(204).send();
   } catch (err) {
     console.error('Delete payment error', err);
@@ -112,8 +112,8 @@ router.delete('/payments/:id', async (req, res) => {
 // GET /api/extras/organizers
 router.get('/organizers', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [results] = await pool.query('SELECT OrganizerId, Name, Email, Phone, Address, OrganizerType, Description, CreatedAt FROM Organizers ORDER BY Name');
+    const db = await getDbPool();
+    const results = await db.all('SELECT OrganizerId, Name, Email, Phone, Address, OrganizerType, Description, CreatedAt FROM Organizers ORDER BY Name');
     return res.json(results);
   } catch (err) {
     console.error('Get organizers error', err);
@@ -124,9 +124,9 @@ router.get('/organizers', async (req, res) => {
 // GET /api/extras/organizers/:id
 router.get('/organizers/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [results] = await pool.query('SELECT OrganizerId, Name, Email, Phone, Address, OrganizerType, Description, CreatedAt FROM Organizers WHERE OrganizerId = ?', [req.params.id]);
-    if (results.length === 0) {
+    const db = await getDbPool();
+    const results = await db.all('SELECT OrganizerId, Name, Email, Phone, Address, OrganizerType, Description, CreatedAt FROM Organizers WHERE OrganizerId = ?', [req.params.id]);
+    if (!results || results.length === 0) {
       return res.status(404).json({ message: 'Organizer not found' });
     }
     return res.json(results[0]);
@@ -143,10 +143,10 @@ router.post('/organizers', async (req, res) => {
     return res.status(400).json({ message: 'Name and OrganizerType are required' });
   }
   try {
-    const pool = await getDbPool();
-    const result = await pool.query(`INSERT INTO Organizers (Name, Email, Phone, Address, OrganizerType, Description)
+    const db = await getDbPool();
+    const result = await db.run(`INSERT INTO Organizers (Name, Email, Phone, Address, OrganizerType, Description)
               VALUES (?, ?, ?, ?, ?, ?)`, [name, email || null, phone || null, address || null, organizerType, description || null]);
-    const [inserted] = await pool.query('SELECT OrganizerId, Name, Email, Phone, Address, OrganizerType, Description, CreatedAt FROM Organizers WHERE OrganizerId = ?', [result.insertId]);
+    const inserted = await db.all('SELECT OrganizerId, Name, Email, Phone, Address, OrganizerType, Description, CreatedAt FROM Organizers WHERE OrganizerId = ?', [result.lastID]);
     return res.status(201).json(inserted[0]);
   } catch (err) {
     console.error('Create organizer error', err);
@@ -157,13 +157,13 @@ router.post('/organizers', async (req, res) => {
 // PUT /api/extras/organizers/:id
 router.put('/organizers/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [existing] = await pool.query('SELECT OrganizerId FROM Organizers WHERE OrganizerId = ?', [req.params.id]);
-    if (existing.length === 0) {
+    const db = await getDbPool();
+    const existing = await db.all('SELECT OrganizerId FROM Organizers WHERE OrganizerId = ?', [req.params.id]);
+    if (!existing || existing.length === 0) {
       return res.status(404).json({ message: 'Organizer not found' });
     }
     const { name, email, phone, address, organizerType, description } = req.body;
-    await pool.query(`UPDATE Organizers
+    await db.run(`UPDATE Organizers
               SET Name = COALESCE(?, Name),
                   Email = COALESCE(?, Email),
                   Phone = COALESCE(?, Phone),
@@ -171,7 +171,7 @@ router.put('/organizers/:id', async (req, res) => {
                   OrganizerType = COALESCE(?, OrganizerType),
                   Description = COALESCE(?, Description)
               WHERE OrganizerId = ?`, [name || null, email || null, phone || null, address || null, organizerType || null, description || null, req.params.id]);
-    const [updated] = await pool.query('SELECT OrganizerId, Name, Email, Phone, Address, OrganizerType, Description, CreatedAt FROM Organizers WHERE OrganizerId = ?', [req.params.id]);
+    const updated = await db.all('SELECT OrganizerId, Name, Email, Phone, Address, OrganizerType, Description, CreatedAt FROM Organizers WHERE OrganizerId = ?', [req.params.id]);
     return res.json(updated[0]);
   } catch (err) {
     console.error('Update organizer error', err);
@@ -182,12 +182,12 @@ router.put('/organizers/:id', async (req, res) => {
 // DELETE /api/extras/organizers/:id
 router.delete('/organizers/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [existing] = await pool.query('SELECT OrganizerId FROM Organizers WHERE OrganizerId = ?', [req.params.id]);
-    if (existing.length === 0) {
+    const db = await getDbPool();
+    const existing = await db.all('SELECT OrganizerId FROM Organizers WHERE OrganizerId = ?', [req.params.id]);
+    if (!existing || existing.length === 0) {
       return res.status(404).json({ message: 'Organizer not found' });
     }
-    await pool.query('DELETE FROM Organizers WHERE OrganizerId = ?', [req.params.id]);
+    await db.run('DELETE FROM Organizers WHERE OrganizerId = ?', [req.params.id]);
     return res.status(204).send();
   } catch (err) {
     console.error('Delete organizer error', err);
@@ -200,8 +200,8 @@ router.delete('/organizers/:id', async (req, res) => {
 // GET /api/extras/discounts
 router.get('/discounts', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [results] = await pool.query('SELECT DiscountId, Code, Description, Percentage, StartDate, EndDate, Status, CreatedAt FROM Discounts ORDER BY Code');
+    const db = await getDbPool();
+    const results = await db.all('SELECT DiscountId, Code, Description, Percentage, StartDate, EndDate, Status, CreatedAt FROM Discounts ORDER BY Code');
     return res.json(results);
   } catch (err) {
     console.error('Get discounts error', err);
@@ -216,10 +216,10 @@ router.post('/discounts', async (req, res) => {
     return res.status(400).json({ message: 'Code, Percentage, StartDate, and EndDate are required' });
   }
   try {
-    const pool = await getDbPool();
-    const result = await pool.query(`INSERT INTO Discounts (Code, Description, Percentage, StartDate, EndDate, Status)
+    const db = await getDbPool();
+    const result = await db.run(`INSERT INTO Discounts (Code, Description, Percentage, StartDate, EndDate, Status)
               VALUES (?, ?, ?, ?, ?, 'Active')`, [code, description || null, percentage, startDate, endDate]);
-    const [inserted] = await pool.query('SELECT DiscountId, Code, Description, Percentage, StartDate, EndDate, Status, CreatedAt FROM Discounts WHERE DiscountId = ?', [result.insertId]);
+    const inserted = await db.all('SELECT DiscountId, Code, Description, Percentage, StartDate, EndDate, Status, CreatedAt FROM Discounts WHERE DiscountId = ?', [result.lastID]);
     return res.status(201).json(inserted[0]);
   } catch (err) {
     console.error('Create discount error', err);
@@ -230,18 +230,18 @@ router.post('/discounts', async (req, res) => {
 // PUT /api/extras/discounts/:id
 router.put('/discounts/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [existing] = await pool.query('SELECT DiscountId FROM Discounts WHERE DiscountId = ?', [req.params.id]);
-    if (existing.length === 0) {
+    const db = await getDbPool();
+    const existing = await db.all('SELECT DiscountId FROM Discounts WHERE DiscountId = ?', [req.params.id]);
+    if (!existing || existing.length === 0) {
       return res.status(404).json({ message: 'Discount not found' });
     }
     const { description, percentage, status } = req.body;
-    await pool.query(`UPDATE Discounts
+    await db.run(`UPDATE Discounts
               SET Description = COALESCE(?, Description),
                   Percentage = COALESCE(?, Percentage),
                   Status = COALESCE(?, Status)
               WHERE DiscountId = ?`, [description || null, percentage || null, status || null, req.params.id]);
-    const [updated] = await pool.query('SELECT DiscountId, Code, Description, Percentage, StartDate, EndDate, Status, CreatedAt FROM Discounts WHERE DiscountId = ?', [req.params.id]);
+    const updated = await db.all('SELECT DiscountId, Code, Description, Percentage, StartDate, EndDate, Status, CreatedAt FROM Discounts WHERE DiscountId = ?', [req.params.id]);
     return res.json(updated[0]);
   } catch (err) {
     console.error('Update discount error', err);
@@ -252,12 +252,12 @@ router.put('/discounts/:id', async (req, res) => {
 // DELETE /api/extras/discounts/:id
 router.delete('/discounts/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [existing] = await pool.query('SELECT DiscountId FROM Discounts WHERE DiscountId = ?', [req.params.id]);
-    if (existing.length === 0) {
+    const db = await getDbPool();
+    const existing = await db.all('SELECT DiscountId FROM Discounts WHERE DiscountId = ?', [req.params.id]);
+    if (!existing || existing.length === 0) {
       return res.status(404).json({ message: 'Discount not found' });
     }
-    await pool.query('DELETE FROM Discounts WHERE DiscountId = ?', [req.params.id]);
+    await db.run('DELETE FROM Discounts WHERE DiscountId = ?', [req.params.id]);
     return res.status(204).send();
   } catch (err) {
     console.error('Delete discount error', err);
@@ -270,7 +270,7 @@ router.delete('/discounts/:id', async (req, res) => {
 // GET /api/extras/ratings?eventId=x&clientId=x
 router.get('/ratings', async (req, res) => {
   try {
-    const pool = await getDbPool();
+    const db = await getDbPool();
     let query = `SELECT RatingId, EventId, ClientId, Rating, Comment, RatingDate FROM Ratings`;
     const params = [];
     
@@ -287,7 +287,7 @@ router.get('/ratings', async (req, res) => {
       params.push(req.query.clientId);
     }
     query += ' ORDER BY RatingDate DESC';
-    const [results] = await pool.query(query, params);
+    const results = await db.all(query, params);
     return res.json(results);
   } catch (err) {
     console.error('Get ratings error', err);
@@ -298,9 +298,9 @@ router.get('/ratings', async (req, res) => {
 // GET /api/extras/ratings/:id
 router.get('/ratings/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [results] = await pool.query('SELECT RatingId, EventId, ClientId, Rating, Comment, RatingDate FROM Ratings WHERE RatingId = ?', [req.params.id]);
-    if (results.length === 0) {
+    const db = await getDbPool();
+    const results = await db.all('SELECT RatingId, EventId, ClientId, Rating, Comment, RatingDate FROM Ratings WHERE RatingId = ?', [req.params.id]);
+    if (!results || results.length === 0) {
       return res.status(404).json({ message: 'Rating not found' });
     }
     return res.json(results[0]);
@@ -320,10 +320,10 @@ router.post('/ratings', async (req, res) => {
     return res.status(400).json({ message: 'Rating must be between 1 and 5' });
   }
   try {
-    const pool = await getDbPool();
-    const result = await pool.query(`INSERT INTO Ratings (EventId, ClientId, Rating, Comment)
+    const db = await getDbPool();
+    const result = await db.run(`INSERT INTO Ratings (EventId, ClientId, Rating, Comment)
               VALUES (?, ?, ?, ?)`, [eventId, clientId, rating, comment || null]);
-    const [inserted] = await pool.query('SELECT RatingId, EventId, ClientId, Rating, Comment, RatingDate FROM Ratings WHERE RatingId = ?', [result.insertId]);
+    const inserted = await db.all('SELECT RatingId, EventId, ClientId, Rating, Comment, RatingDate FROM Ratings WHERE RatingId = ?', [result.lastID]);
     return res.status(201).json(inserted[0]);
   } catch (err) {
     console.error('Create rating error', err);
@@ -334,16 +334,16 @@ router.post('/ratings', async (req, res) => {
 // PUT /api/extras/ratings/:id
 router.put('/ratings/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [existing] = await pool.query('SELECT RatingId FROM Ratings WHERE RatingId = ?', [req.params.id]);
-    if (existing.length === 0) {
+    const db = await getDbPool();
+    const existing = await db.all('SELECT RatingId FROM Ratings WHERE RatingId = ?', [req.params.id]);
+    if (!existing || existing.length === 0) {
       return res.status(404).json({ message: 'Rating not found' });
     }
     const { rating, comment } = req.body;
     if (rating !== undefined && (rating < 1 || rating > 5)) {
       return res.status(400).json({ message: 'Rating must be between 1 and 5' });
     }
-    await pool.query(`UPDATE Ratings 
+    await db.run(`UPDATE Ratings 
               SET Rating = COALESCE(?, Rating),
                   Comment = COALESCE(?, Comment)
               WHERE RatingId = ?`, [rating, comment || null, req.params.id]);
@@ -357,12 +357,12 @@ router.put('/ratings/:id', async (req, res) => {
 // DELETE /api/extras/ratings/:id
 router.delete('/ratings/:id', async (req, res) => {
   try {
-    const pool = await getDbPool();
-    const [existing] = await pool.query('SELECT RatingId FROM Ratings WHERE RatingId = ?', [req.params.id]);
-    if (existing.length === 0) {
+    const db = await getDbPool();
+    const existing = await db.all('SELECT RatingId FROM Ratings WHERE RatingId = ?', [req.params.id]);
+    if (!existing || existing.length === 0) {
       return res.status(404).json({ message: 'Rating not found' });
     }
-    await pool.query('DELETE FROM Ratings WHERE RatingId = ?', [req.params.id]);
+    await db.run('DELETE FROM Ratings WHERE RatingId = ?', [req.params.id]);
     return res.status(204).send();
   } catch (err) {
     console.error('Delete rating error', err);
