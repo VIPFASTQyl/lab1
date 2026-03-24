@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Madverse - Music Art and Dance Festival</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Syncopate:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              madverse: {
+                dark: '#020617',
+                darker: '#020617'
+              },
+              'madverse-accent': '#e5e5e5'
+            },
+            fontFamily: {
+              festival: ['Syncopate', 'system-ui', 'sans-serif'],
+              display: ['Orbitron', 'system-ui', 'sans-serif'],
+              body: ['Rajdhani', 'system-ui', 'sans-serif']
+            }
+          }
+        }
+      };
+    </script>
+    <style>
+      .hero-bg {
+        background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)),
+          url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800"><defs><radialGradient id="fireworks" cx="0.7" cy="0.3" r="0.5"><stop offset="0%" stop-color="%23ffffff" stop-opacity="0.8"/><stop offset="100%" stop-color="%23ffffff" stop-opacity="0"/></radialGradient></defs><rect width="1200" height="800" fill="%23222"/><circle cx="800" cy="200" r="50" fill="url(%23fireworks)"/><circle cx="850" cy="150" r="30" fill="url(%23fireworks)"/><circle cx="750" cy="250" r="40" fill="url(%23fireworks)"/><line x1="600" y1="100" x2="700" y2="200" stroke="%23ff0000" stroke-width="2" opacity="0.6"/><line x1="900" y1="150" x2="1000" y2="250" stroke="%230000ff" stroke-width="2" opacity="0.6"/><line x1="500" y1="300" x2="600" y2="400" stroke="%23ff0000" stroke-width="2" opacity="0.6"/><line x1="1000" y1="350" x2="1100" y2="450" stroke="%230000ff" stroke-width="2" opacity="0.6"/></svg>');
+        background-size: cover;
+        background-position: center;
+      }
+      .sphere-bg {
+        background: linear-gradient(45deg, #4f46e5, #7c3aed);
+      }
+      .brasil-bg {
+        background: linear-gradient(45deg, #059669, #10b981, #f59e0b);
+      }
+      .atmosphere-bg {
+        background: linear-gradient(45deg, #dc2626, #b91c1c);
+      }
+      .dropdown-container {
+        position: relative;
+        display: inline-block;
+      }
+      .dropdown-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        background: rgba(30, 30, 30, 0.95);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        min-width: 200px;
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3),
+          0 0 20px rgba(255, 255, 255, 0.05),
+          0 0 40px rgba(138, 43, 226, 0.1);
+      }
+      .dropdown-container:hover .dropdown-menu,
+      .dropdown-container:focus-within .dropdown-menu {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+      }
+      .dropdown-item {
+        display: block;
+        padding: 12px 16px;
+        color: white;
+        text-decoration: none;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      .dropdown-item:last-child {
+        border-bottom: none;
+      }
+      .dropdown-item:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #e5e5e5;
+        transform: translateX(5px);
+      }
+      .dropdown-header {
+        padding: 12px 16px;
+        font-family: 'Syncopate', sans-serif;
+        font-size: 12px;
+        font-weight: 700;
+        color: #e5e5e5;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .card-hover {
+        transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+        transform-style: preserve-3d;
+        position: relative;
+        overflow: hidden;
+      }
+      .card-hover::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(
+          45deg,
+          transparent 0%,
+          rgba(255, 255, 255, 0.1) 25%,
+          var(--shimmer-color, rgba(138, 43, 226, 0.2)) 50%,
+          rgba(255, 255, 255, 0.1) 75%,
+          transparent 100%
+        );
+        transform: translateX(-100%) skewX(-15deg);
+        transition: transform 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+        pointer-events: none;
+        z-index: 1;
+      }
+      .card-hover::after {
+        content: '';
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        right: -2px;
+        bottom: -2px;
+        background: linear-gradient(
+          45deg,
+          var(--holographic-color-1, #ff0000),
+          var(--holographic-color-2, #ff7f00),
+          var(--holographic-color-3, #ffff00),
+          var(--holographic-color-4, #00ff00),
+          var(--holographic-color-5, #0000ff),
+          var(--holographic-color-6, #4b0082),
+          var(--holographic-color-7, #9400d3),
+          var(--holographic-color-1, #ff0000),
+          var(--holographic-color-2, #ff7f00),
+          var(--holographic-color-3, #ffff00),
+          var(--holographic-color-4, #00ff00),
+          var(--holographic-color-5, #0000ff),
+          var(--holographic-color-6, #4b0082),
+          var(--holographic-color-7, #9400d3)
+        );
+        background-size: 400% 400%;
+        border-radius: 8px;
+        z-index: -1;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        animation: holographic-shift 3s ease-in-out infinite;
+      }
+      .card-hover:hover::before {
+        transform: translateX(100%) skewX(-15deg);
+      }
+      .card-hover:hover::after {
+        opacity: 1;
+      }
+      @keyframes holographic-shift {
+        0%,
+        100% {
+          background-position: 0% 50%;
+        }
+        50% {
+          background-position: 100% 50%;
+        }
+      }
+      .ticket-3d {
+        perspective: 1000px;
+        width: 300px;
+        height: 200px;
+        position: relative;
+      }
+      .ticket-container {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        transform-style: preserve-3d;
+      }
+      .ticket-face {
+        position: absolute;
+        width: 280px;
+        height: 180px;
+        background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 50%, #1e1e1e 100%);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.1),
+          0 0 40px rgba(138, 43, 226, 0.2),
+          0 0 60px rgba(75, 0, 130, 0.1);
+        overflow: hidden;
+      }
+      .ticket-logo {
+        width: 60px;
+        height: 60px;
+        background: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 15px;
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+      }
+    </style>
+  </head>
+  <body class="bg-madverse-dark text-white min-h-screen">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
