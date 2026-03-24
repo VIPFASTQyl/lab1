@@ -138,7 +138,7 @@ function DashboardPage() {
   const [showEventModal, setShowEventModal] = useState(false);
   const [editingEventId, setEditingEventId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
-  const [formData, setFormData] = useState({ name: '', price: '', zones: '', description: '' });
+  const [formData, setFormData] = useState({ name: '', price: '', zones: '', description: '', image: null, imagePreview: null });
   const { events, addEvent, updateEvent, deleteEvent } = useEvents();
 
   useEffect(() => {
@@ -201,11 +201,13 @@ function DashboardPage() {
         name: event.name,
         price: event.price,
         zones: event.zones.join(', '),
-        description: event.description
+        description: event.description,
+        image: event.image || null,
+        imagePreview: event.image || null
       });
       setEditingEventId(eventId);
     } else {
-      setFormData({ name: '', price: '', zones: '', description: '' });
+      setFormData({ name: '', price: '', zones: '', description: '', image: null, imagePreview: null });
       setEditingEventId(null);
     }
     setShowEventModal(true);
@@ -213,8 +215,19 @@ function DashboardPage() {
 
   const handleCloseModal = () => {
     setShowEventModal(false);
-    setFormData({ name: '', price: '', zones: '', description: '' });
+    setFormData({ name: '', price: '', zones: '', description: '', image: null, imagePreview: null });
     setEditingEventId(null);
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, image: reader.result, imagePreview: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSaveEvent = () => {
@@ -227,7 +240,8 @@ function DashboardPage() {
       name: formData.name,
       price: parseInt(formData.price),
       zones: formData.zones.split(',').map(z => z.trim()),
-      description: formData.description
+      description: formData.description,
+      image: formData.image || null
     };
 
     if (editingEventId) {
@@ -485,6 +499,23 @@ function DashboardPage() {
                     placeholder="e.g., Ana Carla Maza Live"
                     rows={3}
                   />
+                </div>
+
+                <div>
+                  <label className="block text-gray-300 font-body text-sm mb-2">Event Image</label>
+                  <div className="space-y-3">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="w-full bg-madverse-dark border border-gray-700 text-gray-400 px-4 py-2 rounded font-body focus:outline-none focus:border-purple-500"
+                    />
+                    {formData.imagePreview && (
+                      <div className="relative w-full h-48 rounded overflow-hidden border border-gray-700">
+                        <img src={formData.imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1043,13 +1074,25 @@ function EventsPage() {
             return (
               <div key={id} className="bg-madverse-darker rounded-lg overflow-hidden border border-gray-700 group">
                 {/* Event Image */}
-                <div className={`h-32 w-full ${display.image} flex items-center justify-center relative overflow-hidden`}>
-                  <div className="absolute inset-0 bg-black/30" />
-                  <div className="relative z-10 text-center">
-                    <div className="text-white font-display text-xl font-bold">{event.name}</div>
-                    <div className="text-gray-300 font-body text-xs uppercase tracking-wider">{display.day}</div>
+                {event.image ? (
+                  <div className="h-32 w-full relative overflow-hidden">
+                    <img src={event.image} alt={event.name} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="text-white font-display text-xl font-bold">{event.name}</div>
+                        <div className="text-gray-300 font-body text-xs uppercase tracking-wider">{display.day}</div>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className={`h-32 w-full ${display.image} flex items-center justify-center relative overflow-hidden`}>
+                    <div className="absolute inset-0 bg-black/30" />
+                    <div className="relative z-10 text-center">
+                      <div className="text-white font-display text-xl font-bold">{event.name}</div>
+                      <div className="text-gray-300 font-body text-xs uppercase tracking-wider">{display.day}</div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Event Info */}
                 <div className="p-4">
@@ -1168,10 +1211,22 @@ function EventDetailPage() {
       <div className="py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Event Banner */}
-          <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg p-8 mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold font-display text-white mb-2">{event.name}</h1>
-            <p className="text-gray-200 font-body">{event.description}</p>
-          </div>
+          {event.image ? (
+            <div className="rounded-lg overflow-hidden mb-12 relative h-48">
+              <img src={event.image} alt={event.name} className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-black/40 flex items-end">
+                <div className="p-8 w-full">
+                  <h1 className="text-4xl md:text-5xl font-bold font-display text-white mb-2">{event.name}</h1>
+                  <p className="text-gray-200 font-body">{event.description}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg p-8 mb-12">
+              <h1 className="text-4xl md:text-5xl font-bold font-display text-white mb-2">{event.name}</h1>
+              <p className="text-gray-200 font-body">{event.description}</p>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Column - Selection */}
