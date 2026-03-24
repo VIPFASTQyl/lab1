@@ -1,5 +1,5 @@
 import express from 'express';
-import { getDbPool, sql } from './db.js';
+import { getDbPool } from './db.js';
 import { authMiddleware } from './middleware-auth.js';
 
 const router = express.Router();
@@ -406,6 +406,24 @@ router.get('/order-details', async (req, res) => {
   }
 });
 
+// GET /api/sales/order-details/:id
+router.get('/order-details/:id', async (req, res) => {
+  try {
+    const pool = await getDbPool();
+    const result = await pool
+      .request()
+      .input('id', sql.Int, req.params.id)
+      .query('SELECT DetailId, OrderId, TicketId, Quantity, UnitPrice, TotalPrice FROM OrderDetails WHERE DetailId = @id');
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ message: 'Order detail not found' });
+    }
+    return res.json(result.recordset[0]);
+  } catch (err) {
+    console.error('Get order detail error', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 // POST /api/sales/order-details
 router.post('/order-details', async (req, res) => {
   const { orderId, ticketId, quantity, unitPrice, totalPrice } = req.body;
@@ -427,6 +445,36 @@ router.post('/order-details', async (req, res) => {
     return res.status(201).json(result.recordset[0]);
   } catch (err) {
     console.error('Create order detail error', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// PUT /api/sales/order-details/:id
+router.put('/order-details/:id', async (req, res) => {
+  try {
+    const pool = await getDbPool();
+    const existing = await pool
+      .request()
+      .input('id', sql.Int, req.params.id)
+      .query('SELECT DetailId FROM OrderDetails WHERE DetailId = @id');
+    if (existing.recordset.length === 0) {
+      return res.status(404).json({ message: 'Order detail not found' });
+    }
+    const { quantity, unitPrice, totalPrice } = req.body;
+    await pool
+      .request()
+      .input('id', sql.Int, req.params.id)
+      .input('quantity', sql.Int, quantity)
+      .input('unitPrice', sql.Decimal(10, 2), unitPrice)
+      .input('totalPrice', sql.Decimal(10, 2), totalPrice)
+      .query(`UPDATE OrderDetails
+              SET Quantity = ISNULL(@quantity, Quantity),
+                  UnitPrice = ISNULL(@unitPrice, UnitPrice),
+                  TotalPrice = ISNULL(@totalPrice, TotalPrice)
+              WHERE DetailId = @id`);
+    return res.json({ message: 'Order detail updated successfully' });
+  } catch (err) {
+    console.error('Update order detail error', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 });

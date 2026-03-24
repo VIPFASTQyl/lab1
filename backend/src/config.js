@@ -5,14 +5,13 @@ dotenv.config();
 export const PORT = process.env.PORT || 5000;
 
 export const dbConfig = {
-  user: process.env.DB_USER || 'sa',
-  password: process.env.DB_PASSWORD || 'YourStrong!Passw0rd',
-  server: process.env.DB_SERVER || 'localhost',
-  database: process.env.DB_NAME || 'TicketAppDb',
-  options: {
-    encrypt: false,
-    trustServerCertificate: true
-  }
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || 'root',
+  database: process.env.DB_NAME || 'ticketapp_db',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 };
 
 export const jwtConfig = {

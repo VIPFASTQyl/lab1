@@ -1,7 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { getDbPool, sql } from './db.js';
+import { getDbPool } from './db.js';
 import { jwtConfig } from './config.js';
 
 const router = express.Router();
@@ -16,23 +16,18 @@ router.post('/register', async (req, res) => {
   try {
     const pool = await getDbPool();
 
-    const existing = await pool
-      .request()
-      .input('email', sql.NVarChar, email)
-      .query('SELECT Id FROM Users WHERE Email = @email');
+    const [existing] = await pool.query('SELECT Id FROM Users WHERE Email = ?', [email]);
 
-    if (existing.recordset.length > 0) {
+    if (existing.length > 0) {
       return res.status(409).json({ message: 'User with this email already exists' });
     }
 
     const hash = await bcrypt.hash(password, 10);
 
-    await pool
-      .request()
-      .input('name', sql.NVarChar, name)
-      .input('email', sql.NVarChar, email)
-      .input('passwordHash', sql.NVarChar, hash)
-      .query('INSERT INTO Users (Name, Email, PasswordHash, CreatedAt) VALUES (@name, @email, @passwordHash, GETUTCDATE())');
+    await pool.query(
+      'INSERT INTO Users (Name, Email, PasswordHash, CreatedAt) VALUES (?, ?, ?, NOW())',
+      [name, email, hash]
+    );
 
     return res.status(201).json({ message: 'User registered' });
   } catch (err) {
@@ -51,16 +46,16 @@ router.post('/login', async (req, res) => {
   try {
     const pool = await getDbPool();
 
-    const result = await pool
-      .request()
-      .input('email', sql.NVarChar, email)
-      .query('SELECT TOP 1 Id, Name, Email, PasswordHash, IsAdmin FROM Users WHERE Email = @email');
+    const [results] = await pool.query(
+      'SELECT Id, Name, Email, PasswordHash, IsAdmin FROM Users WHERE Email = ? LIMIT 1',
+      [email]
+    );
 
-    if (result.recordset.length === 0) {
+    if (results.length === 0) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    const user = result.recordset[0];
+    const user = results[0];
     const match = await bcrypt.compare(password, user.PasswordHash);
     if (!match) {
       return res.status(401).json({ message: 'Invalid credentials' });

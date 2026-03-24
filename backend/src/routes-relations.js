@@ -1,5 +1,5 @@
 import express from 'express';
-import { getDbPool, sql } from './db.js';
+import { getDbPool } from './db.js';
 import { authMiddleware } from './middleware-auth.js';
 
 const router = express.Router();

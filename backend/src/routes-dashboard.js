@@ -1,5 +1,5 @@
 import express from 'express';
-import { getDbPool, sql } from './db.js';
+import { getDbPool } from './db.js';
 import { authMiddleware } from './middleware-auth.js';
 
 const router = express.Router();
@@ -19,20 +19,14 @@ router.get('/summary', async (req, res) => {
   try {
     const pool = await getDbPool();
 
-    const totalTickets = await pool.request().query('SELECT COUNT(*) as Total FROM Tickets');
-    const openTickets = await pool
-      .request()
-      .input('status', sql.NVarChar, 'Open')
-      .query('SELECT COUNT(*) as Total FROM Tickets WHERE Status = @status');
-    const closedTickets = await pool
-      .request()
-      .input('status', sql.NVarChar, 'Closed')
-      .query('SELECT COUNT(*) as Total FROM Tickets WHERE Status = @status');
+    const [totalTicketsResult] = await pool.query('SELECT COUNT(*) as Total FROM Tickets');
+    const [openTicketsResult] = await pool.query('SELECT COUNT(*) as Total FROM Tickets WHERE Status = ?', ['Available']);
+    const [soldTicketsResult] = await pool.query('SELECT COUNT(*) as Total FROM Tickets WHERE Status = ?', ['Sold']);
 
     return res.json({
-      totalTickets: totalTickets.recordset[0].Total,
-      openTickets: openTickets.recordset[0].Total,
-      closedTickets: closedTickets.recordset[0].Total
+      totalTickets: totalTicketsResult[0].Total,
+      availableTickets: openTicketsResult[0].Total,
+      soldTickets: soldTicketsResult[0].Total
     });
   } catch (err) {
     console.error('Dashboard summary error', err);

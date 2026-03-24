@@ -1,5 +1,5 @@
 import express from 'express';
-import { getDbPool, sql } from './db.js';
+import { getDbPool } from './db.js';
 import { authMiddleware } from './middleware-auth.js';
 
 const router = express.Router();
@@ -385,6 +385,24 @@ router.get('/ratings', async (req, res) => {
   }
 });
 
+// GET /api/extras/ratings/:id
+router.get('/ratings/:id', async (req, res) => {
+  try {
+    const pool = await getDbPool();
+    const result = await pool
+      .request()
+      .input('id', sql.Int, req.params.id)
+      .query('SELECT RatingId, EventId, ClientId, Rating, Comment, RatingDate FROM Ratings WHERE RatingId = @id');
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ message: 'Rating not found' });
+    }
+    return res.json(result.recordset[0]);
+  } catch (err) {
+    console.error('Get rating error', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 // POST /api/extras/ratings
 router.post('/ratings', async (req, res) => {
   const { eventId, clientId, rating, comment } = req.body;
@@ -408,6 +426,37 @@ router.post('/ratings', async (req, res) => {
     return res.status(201).json(result.recordset[0]);
   } catch (err) {
     console.error('Create rating error', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// PUT /api/extras/ratings/:id
+router.put('/ratings/:id', async (req, res) => {
+  try {
+    const pool = await getDbPool();
+    const existing = await pool
+      .request()
+      .input('id', sql.Int, req.params.id)
+      .query('SELECT RatingId FROM Ratings WHERE RatingId = @id');
+    if (existing.recordset.length === 0) {
+      return res.status(404).json({ message: 'Rating not found' });
+    }
+    const { rating, comment } = req.body;
+    if (rating !== undefined && (rating < 1 || rating > 5)) {
+      return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+    }
+    await pool
+      .request()
+      .input('id', sql.Int, req.params.id)
+      .input('rating', sql.Int, rating)
+      .input('comment', sql.NVarChar, comment || null)
+      .query(`UPDATE Ratings 
+              SET Rating = ISNULL(@rating, Rating),
+                  Comment = ISNULL(@comment, Comment)
+              WHERE RatingId = @id`);
+    return res.json({ message: 'Rating updated successfully' });
+  } catch (err) {
+    console.error('Update rating error', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 });
