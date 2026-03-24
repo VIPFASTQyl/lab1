@@ -1,7 +1,39 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext, createContext } from 'react';
 import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 
 const API_BASE = '/api';
+
+// Basket Context
+const BasketContext = createContext();
+
+function useBasket() {
+  const [basket, setBasket] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('madverseBasket') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  const addToBasket = (item) => {
+    const newBasket = [...basket, item];
+    setBasket(newBasket);
+    localStorage.setItem('madverseBasket', JSON.stringify(newBasket));
+  };
+
+  const removeFromBasket = (index) => {
+    const newBasket = basket.filter((_, i) => i !== index);
+    setBasket(newBasket);
+    localStorage.setItem('madverseBasket', JSON.stringify(newBasket));
+  };
+
+  const clearBasket = () => {
+    setBasket([]);
+    localStorage.removeItem('madverseBasket');
+  };
+
+  return { basket, addToBasket, removeFromBasket, clearBasket };
+}
 
 function getToken() {
   return localStorage.getItem('token');
@@ -405,6 +437,7 @@ function Layout({ children }) {
 
 function LandingPage() {
   const navigate = useNavigate();
+  const { basket } = useBasket();
   const [darkMode, setDarkMode] = useState(true);
 
   useEffect(() => {
@@ -436,6 +469,13 @@ function LandingPage() {
               </div>
             </nav>
             <div className="flex items-center space-x-4">
+              <button
+                type="button"
+                onClick={() => navigate('/checkout')}
+                className="text-sm uppercase font-body font-semibold border border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white px-3 py-1 rounded transition-colors relative"
+              >
+                🛒 {basket.length > 0 && <span className="absolute -top-2 -right-2 bg-purple-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{basket.length}</span>}
+              </button>
               <button
                 type="button"
                 onClick={() => navigate('/dashboard')}
@@ -517,16 +557,159 @@ function LandingPage() {
 }
 
 function CheckoutPage() {
+  const navigate = useNavigate();
+  const { basket, removeFromBasket, clearBasket } = useBasket();
+
+  const total = basket.reduce((sum, item) => sum + item.total, 0);
+
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Checkout</h1>
-      <p>This is a placeholder checkout page where selected tickets would be reviewed and purchased.</p>
+    <div className="min-h-screen bg-madverse-dark">
+      {/* Header */}
+      <header className="bg-madverse-darker border-b border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate(-1)}
+                className="text-purple-400 hover:text-purple-300 text-2xl font-bold"
+                title="Go Back"
+              >
+                ←
+              </button>
+              <div className="flex items-center">
+                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center mr-3">
+                  <span className="text-black font-bold text-sm">M</span>
+                </div>
+                <span className="text-white font-bold text-xl font-festival tracking-wider">MADVERSE</span>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/')}
+              className="text-sm uppercase font-body font-semibold border border-white px-3 py-1 rounded hover:bg-white hover:text-madverse-dark transition-colors"
+            >
+              Home
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          {/* Page Title */}
+          <div className="mb-12">
+            <h1 className="text-4xl md:text-5xl font-bold font-display text-white mb-2">Checkout</h1>
+            <p className="text-gray-400 font-body">Review and confirm your ticket order</p>
+          </div>
+
+          {basket.length === 0 ? (
+            <div className="bg-madverse-darker border border-gray-700 rounded-lg p-12 text-center">
+              <div className="text-6xl mb-4">🛒</div>
+              <h2 className="text-2xl font-bold font-display text-white mb-4">Your basket is empty</h2>
+              <p className="text-gray-400 font-body mb-8">Add tickets to get started!</p>
+              <button
+                onClick={() => navigate('/events')}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-body font-bold px-8 py-3 rounded uppercase tracking-wide transition-colors"
+              >
+                Browse Events
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Order Items */}
+              <div className="lg:col-span-2">
+                <div className="bg-madverse-darker border border-gray-700 rounded-lg overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-700 bg-madverse-dark">
+                    <h2 className="text-xl font-bold font-display text-white">Order Summary</h2>
+                  </div>
+
+                  <div className="divide-y divide-gray-700">
+                    {basket.map((item, idx) => (
+                      <div key={idx} className="p-6 hover:bg-madverse-dark/50 transition-colors">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h3 className="text-lg font-bold font-display text-white mb-2">{item.eventName}</h3>
+                            <div className="space-y-1">
+                              <p className="text-gray-400 font-body text-sm">Zone: <span className="text-purple-400 font-semibold">{item.zone}</span></p>
+                              <p className="text-gray-400 font-body text-sm">Quantity: <span className="text-purple-400 font-semibold">×{item.quantity}</span></p>
+                              <p className="text-gray-400 font-body text-sm">Price per ticket: <span className="text-yellow-400 font-semibold">EUR {item.price}</span></p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-2xl font-bold font-display text-yellow-400 mb-4">EUR {item.total}</p>
+                            <button
+                              onClick={() => removeFromBasket(idx)}
+                              className="text-red-400 hover:text-red-300 font-body text-sm font-semibold"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Continue Shopping */}
+                <button
+                  onClick={() => navigate('/events')}
+                  className="mt-6 w-full bg-gray-700 hover:bg-gray-600 text-white font-body font-semibold py-3 rounded uppercase tracking-wide transition-colors"
+                >
+                  Continue Shopping
+                </button>
+              </div>
+
+              {/* Order Summary Sidebar */}
+              <div>
+                <div className="bg-madverse-darker border border-gray-700 rounded-lg p-6 sticky top-20">
+                  <h3 className="text-xl font-bold font-display text-white mb-6">Order Total</h3>
+
+                  <div className="space-y-4 mb-6">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400 font-body">Subtotal</span>
+                      <span className="text-white font-semibold">EUR {total}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400 font-body">Fees</span>
+                      <span className="text-white font-semibold">EUR 0</span>
+                    </div>
+                    <div className="border-t border-gray-700 pt-4 flex justify-between">
+                      <span className="text-white font-bold">Total</span>
+                      <span className="text-yellow-400 font-bold font-display text-2xl">EUR {total}</span>
+                    </div>
+                  </div>
+
+                  <button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-body font-bold py-3 rounded uppercase tracking-wide transition-colors mb-3">
+                    Proceed to Payment
+                  </button>
+
+                  <button
+                    onClick={clearBasket}
+                    className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-400 font-body font-semibold py-3 rounded uppercase tracking-wide transition-colors"
+                  >
+                    Clear Basket
+                  </button>
+
+                  <div className="mt-6 pt-6 border-t border-gray-700">
+                    <p className="text-gray-400 font-body text-xs">
+                      ✓ Secure checkout<br/>
+                      ✓ SSL encrypted<br/>
+                      ✓ Money-back guarantee
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
 function EventsPage() {
   const navigate = useNavigate();
+  const { basket } = useBasket();
   const events = [
     { id: 1, name: 'E MARTÉ', day: 'TUESDAY', date: 'Tuesday, 24 March 2026, 10:00', price: '3 EUR', image: 'bg-gradient-to-br from-purple-600 to-purple-800', zones: ['VIP', 'Standard', 'General'], description: 'Deep Space Pristhina - Tuesday' },
     { id: 2, name: 'E MERKURÉ', day: 'WEDNESDAY', date: 'Wednesday, 25 March 2026, 10:00', price: '3 EUR', image: 'bg-gradient-to-br from-blue-600 to-purple-800', zones: ['VIP', 'Standard', 'General'], description: 'Deep Space Pristhina - Wednesday' },
@@ -547,17 +730,49 @@ function EventsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-madverse-dark py-16 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-12">
-          <h1 className="text-5xl md:text-6xl font-bold font-display tracking-tight text-white mb-4">
-            ALL UPCOMING EVENTS
-          </h1>
+    <div className="min-h-screen bg-madverse-dark">
+      {/* Header */}
+      <header className="bg-madverse-darker border-b border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center cursor-pointer" onClick={() => navigate('/')}>
+              <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center mr-3">
+                <span className="text-black font-bold text-sm">M</span>
+              </div>
+              <span className="text-white font-bold text-xl font-festival tracking-wider">MADVERSE</span>
+            </div>
+            <div className="flex items-center space-x-4">
+              <button
+                type="button"
+                onClick={() => navigate('/checkout')}
+                className="text-sm uppercase font-body font-semibold border border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white px-3 py-1 rounded transition-colors relative"
+              >
+                🛒 {basket.length > 0 && <span className="absolute -top-2 -right-2 bg-purple-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{basket.length}</span>}
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="text-sm uppercase font-body font-semibold border border-white px-3 py-1 rounded hover:bg-white hover:text-madverse-dark transition-colors"
+              >
+                Home
+              </button>
+            </div>
+          </div>
         </div>
+      </header>
 
-        {/* Events Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Main Content */}
+      <div className="py-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-12">
+            <h1 className="text-5xl md:text-6xl font-bold font-display tracking-tight text-white mb-4">
+              ALL UPCOMING EVENTS
+            </h1>
+          </div>
+
+          {/* Events Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {events.map(event => (
             <div key={event.id} className="bg-madverse-darker rounded-lg overflow-hidden border border-gray-700 group">
               {/* Event Image */}
@@ -587,6 +802,7 @@ function EventsPage() {
               </div>
             </div>
           ))}
+          </div>
         </div>
       </div>
     </div>
@@ -597,10 +813,10 @@ function EventDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const eventId = parseInt(id);
+  const { basket, addToBasket } = useBasket();
   
   const [selectedZone, setSelectedZone] = useState('General');
   const [quantity, setQuantity] = useState(1);
-  const [basket, setBasket] = useState([]);
 
   // Event data matching our events list
   const eventsData = {
@@ -648,8 +864,16 @@ function EventDetailPage() {
   }
 
   const handleAddToBasket = () => {
-    setBasket([...basket, { zone: selectedZone, quantity, price: event.price }]);
+    addToBasket({ 
+      eventId,
+      eventName: event.name, 
+      zone: selectedZone, 
+      quantity, 
+      price: event.price,
+      total: event.price * quantity
+    });
     setQuantity(1);
+    // Optional: Show success message or navigate to checkout
   };
 
   const basketTotal = basket.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -675,6 +899,12 @@ function EventDetailPage() {
                 <span className="text-white font-bold text-xl font-festival tracking-wider">MADVERSE</span>
               </div>
             </div>
+            <button
+              onClick={() => navigate('/checkout')}
+              className="text-sm uppercase font-body font-semibold border border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white px-3 py-1 rounded transition-colors relative"
+            >
+              🛒 {basket.length > 0 && <span className="absolute -top-2 -right-2 bg-purple-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{basket.length}</span>}
+            </button>
             <button
               onClick={() => navigate('/')}
               className="text-sm uppercase font-body font-semibold border border-white px-3 py-1 rounded hover:bg-white hover:text-madverse-dark transition-colors"
@@ -798,7 +1028,9 @@ function EventDetailPage() {
                         <span className="text-gray-300 font-body">Total:</span>
                         <span className="text-yellow-400 font-bold font-display text-lg">EUR {basketTotal}</span>
                       </div>
-                      <button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-body font-bold py-3 rounded uppercase tracking-wide transition-colors">
+                      <button 
+                        onClick={() => navigate('/checkout')}
+                        className="w-full bg-purple-600 hover:bg-purple-700 text-white font-body font-bold py-3 rounded uppercase tracking-wide transition-colors">
                         Proceed to Checkout
                       </button>
                     </div>
