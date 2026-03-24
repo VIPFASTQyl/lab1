@@ -35,6 +35,64 @@ function useBasket() {
   return { basket, addToBasket, removeFromBasket, clearBasket };
 }
 
+// Events Context - for managing festival events
+const EventsContext = createContext();
+
+function useEvents() {
+  const [events, setEvents] = useState(() => {
+    try {
+      const stored = localStorage.getItem('madverseEvents');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+      // Default events if none exist
+      return {
+        1: { name: 'E MARTÉ', price: 300, zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], description: 'Deep Space Pristhina - Tuesday' },
+        2: { name: 'E MERKURÉ', price: 300, zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], description: 'Deep Space Pristhina - Wednesday' },
+        3: { name: 'Event You Don\'t Wanna Miss', price: 800, zones: ['VIP - 1200€', 'General - 800€'], description: 'An event you don\'t wanna miss' },
+        4: { name: 'E ENJTE', price: 300, zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], description: 'Deep Space Pristhina - Thursday' },
+        5: { name: 'E PREMTE', price: 300, zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], description: 'Deep Space Pristhina - Friday' },
+        6: { name: 'E SHTUNE', price: 300, zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], description: 'Deep Space Pristhina - Saturday' },
+        7: { name: 'E DIELË', price: 300, zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], description: 'Deep Space Pristhina - Sunday' },
+        8: { name: 'ANA CARLA MAZA', price: 1000, zones: ['VIP - 1500€', 'Standard - 1000€', 'General - 800€'], description: 'Ana Carla Maza Live' },
+        9: { name: 'Cactus in the Snow', price: 2500, zones: ['VIP - 4000€', 'Standard - 2500€', 'General - 1500€'], description: 'Cactus in the Snow' },
+        10: { name: 'PETER PAN QUARTET', price: 300, zones: ['Standard - 400€', 'General - 300€'], description: 'Peter Pan Quartet' },
+        11: { name: 'DURIM', price: 20000, zones: ['VIP - 30000€', 'Standard - 20000€'], description: 'DURIM Concert' },
+        12: { name: 'Muse-X Festival', price: 2500, zones: ['VIP - 4500€', 'Standard - 2500€', 'General - 1500€', 'Student - 1000€'], description: 'Muse-X Festival 2 Day' },
+        13: { name: 'LYREL.CS', price: 3100, zones: ['Standard - 4000€', 'General - 3100€'], description: 'LYREL.CS Live' },
+        14: { name: 'EXHALE TIBANA', price: 800, zones: ['VIP - 1200€', 'Standard - 900€', 'General - 800€'], description: 'Exhale Tibana' },
+        15: { name: 'Stand UPR 2nd Edition', price: 2800, zones: ['Standard - 3200€', 'General - 2800€'], description: 'Stand Up Comedy' },
+        16: { name: 'MARCEL DETTMANN - RAVE', price: 1500, zones: ['VIP - 2000€', 'Standard - 1500€', 'General - 1000€'], description: 'Marcel Dettmann Rave' }
+      };
+    } catch {
+      return {};
+    }
+  });
+
+  const addEvent = (event) => {
+    const newId = Math.max(0, ...Object.keys(events).map(Number)) + 1;
+    const newEvents = { ...events, [newId]: event };
+    setEvents(newEvents);
+    localStorage.setItem('madverseEvents', JSON.stringify(newEvents));
+    return newId;
+  };
+
+  const updateEvent = (id, updatedEvent) => {
+    const newEvents = { ...events, [id]: updatedEvent };
+    setEvents(newEvents);
+    localStorage.setItem('madverseEvents', JSON.stringify(newEvents));
+  };
+
+  const deleteEvent = (id) => {
+    const newEvents = { ...events };
+    delete newEvents[id];
+    setEvents(newEvents);
+    localStorage.setItem('madverseEvents', JSON.stringify(newEvents));
+  };
+
+  return { events, addEvent, updateEvent, deleteEvent };
+}
+
 function getToken() {
   return localStorage.getItem('token');
 }
@@ -77,6 +135,11 @@ function ProtectedRoute({ children, requireAdmin = false }) {
 function DashboardPage() {
   const [dashData, setDashData] = useState(null);
   const [error, setError] = useState('');
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [editingEventId, setEditingEventId] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [formData, setFormData] = useState({ name: '', price: '', zones: '', description: '' });
+  const { events, addEvent, updateEvent, deleteEvent } = useEvents();
 
   useEffect(() => {
     async function loadDashboard() {
@@ -116,7 +179,7 @@ function DashboardPage() {
   const totalTicketsSold = eventTickets.reduce((sum, e) => sum + e.sold, 0);
   const totalRevenue = eventTickets.reduce((sum, e) => sum + e.revenue, 0);
   const ticketPercentage = ((totalTicketsSold / totalTicketsCapacity) * 100).toFixed(1);
-  const activeMembers = Math.floor(Math.random() * 150) + 50; // Simulated active members
+  const activeMembers = Math.floor(Math.random() * 150) + 50;
 
   const StatCard = ({ icon, title, value, subtitle, color }) => (
     <div className="bg-madverse-darker border border-gray-700 rounded-lg p-6 hover:border-purple-500 transition-all">
@@ -130,6 +193,58 @@ function DashboardPage() {
       </div>
     </div>
   );
+
+  const handleOpenModal = (eventId = null) => {
+    if (eventId && events[eventId]) {
+      const event = events[eventId];
+      setFormData({
+        name: event.name,
+        price: event.price,
+        zones: event.zones.join(', '),
+        description: event.description
+      });
+      setEditingEventId(eventId);
+    } else {
+      setFormData({ name: '', price: '', zones: '', description: '' });
+      setEditingEventId(null);
+    }
+    setShowEventModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowEventModal(false);
+    setFormData({ name: '', price: '', zones: '', description: '' });
+    setEditingEventId(null);
+  };
+
+  const handleSaveEvent = () => {
+    if (!formData.name || !formData.price || !formData.zones || !formData.description) {
+      alert('Please fill in all fields');
+      return;
+    }
+
+    const eventData = {
+      name: formData.name,
+      price: parseInt(formData.price),
+      zones: formData.zones.split(',').map(z => z.trim()),
+      description: formData.description
+    };
+
+    if (editingEventId) {
+      updateEvent(editingEventId, eventData);
+      alert('Event updated successfully');
+    } else {
+      addEvent(eventData);
+      alert('Event created successfully');
+    }
+    handleCloseModal();
+  };
+
+  const handleDeleteEvent = (id) => {
+    deleteEvent(id);
+    setDeleteConfirmId(null);
+    alert('Event deleted successfully');
+  };
 
   return (
     <div className="min-h-screen bg-madverse-dark py-8 px-4 sm:px-6 lg:px-8">
@@ -175,7 +290,7 @@ function DashboardPage() {
         </div>
 
         {/* Event Breakdown Section */}
-        <div className="bg-madverse-darker border border-gray-700 rounded-lg overflow-hidden">
+        <div className="bg-madverse-darker border border-gray-700 rounded-lg overflow-hidden mb-8">
           <div className="px-6 py-4 border-b border-gray-700">
             <h2 className="text-xl font-bold font-display text-white">Event Performance</h2>
             <p className="text-gray-400 font-body text-sm mt-1">Ticket sales and capacity breakdown by event</p>
@@ -244,8 +359,155 @@ function DashboardPage() {
           </div>
         </div>
 
+        {/* Event Management Section */}
+        <div className="bg-madverse-darker border border-gray-700 rounded-lg overflow-hidden mb-8">
+          <div className="px-6 py-4 border-b border-gray-700 flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-bold font-display text-white">Event Management</h2>
+              <p className="text-gray-400 font-body text-sm mt-1">Create, edit, or delete events</p>
+            </div>
+            <button
+              onClick={() => handleOpenModal()}
+              className="bg-purple-600 hover:bg-purple-700 text-white font-body font-semibold py-2 px-4 rounded uppercase tracking-wide transition-colors"
+            >
+              + New Event
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-madverse-dark border-b border-gray-700">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Event Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Price</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Zones</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Description</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(events).map(([id, event]) => (
+                  <tr key={id} className="border-b border-gray-700 hover:bg-madverse-darker/50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-white">{event.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-400 font-semibold">€{event.price}</td>
+                    <td className="px-6 py-4 text-sm text-gray-300">{event.zones.length} zones</td>
+                    <td className="px-6 py-4 text-sm text-gray-400 truncate">{event.description}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleOpenModal(id)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-body text-xs py-1 px-3 rounded transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirmId(id)}
+                          className="bg-red-600 hover:bg-red-700 text-white font-body text-xs py-1 px-3 rounded transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                      {deleteConfirmId === id && (
+                        <div className="mt-2 p-2 bg-red-500/20 border border-red-500 rounded">
+                          <p className="text-xs text-red-200 mb-2">Confirm deletion?</p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleDeleteEvent(id)}
+                              className="bg-red-600 text-white text-xs py-1 px-2 rounded"
+                            >
+                              Yes
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirmId(null)}
+                              className="bg-gray-600 text-white text-xs py-1 px-2 rounded"
+                            >
+                              No
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Event Modal */}
+        {showEventModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-madverse-darker border border-gray-700 rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <h2 className="text-2xl font-bold font-display text-white mb-6">
+                {editingEventId ? 'Edit Event' : 'Create New Event'}
+              </h2>
+
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="block text-gray-300 font-body text-sm mb-2">Event Name</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-2 rounded font-body focus:outline-none focus:border-purple-500"
+                    placeholder="e.g., ANA CARLA MAZA"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-300 font-body text-sm mb-2">Price (€)</label>
+                  <input
+                    type="number"
+                    value={formData.price}
+                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-2 rounded font-body focus:outline-none focus:border-purple-500"
+                    placeholder="e.g., 1000"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-300 font-body text-sm mb-2">Zones (comma-separated)</label>
+                  <textarea
+                    value={formData.zones}
+                    onChange={(e) => setFormData({ ...formData, zones: e.target.value })}
+                    className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-2 rounded font-body focus:outline-none focus:border-purple-500"
+                    placeholder="e.g., VIP - 1500€, Standard - 1000€, General - 800€"
+                    rows={3}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-300 font-body text-sm mb-2">Description</label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-2 rounded font-body focus:outline-none focus:border-purple-500"
+                    placeholder="e.g., Ana Carla Maza Live"
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={handleCloseModal}
+                  className="bg-gray-700 hover:bg-gray-600 text-white font-body font-semibold py-2 px-6 rounded uppercase transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveEvent}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-body font-semibold py-2 px-6 rounded uppercase transition-colors"
+                >
+                  {editingEventId ? 'Update Event' : 'Create Event'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Quick Insights */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-madverse-darker border border-gray-700 rounded-lg p-6">
             <h3 className="text-lg font-bold font-display text-white mb-4">Top Performing Events</h3>
             <div className="space-y-3">
@@ -710,24 +972,27 @@ function CheckoutPage() {
 function EventsPage() {
   const navigate = useNavigate();
   const { basket } = useBasket();
-  const events = [
-    { id: 1, name: 'E MARTÉ', day: 'TUESDAY', date: 'Tuesday, 24 March 2026, 10:00', price: '3 EUR', image: 'bg-gradient-to-br from-purple-600 to-purple-800', zones: ['VIP', 'Standard', 'General'], description: 'Deep Space Pristhina - Tuesday' },
-    { id: 2, name: 'E MERKURÉ', day: 'WEDNESDAY', date: 'Wednesday, 25 March 2026, 10:00', price: '3 EUR', image: 'bg-gradient-to-br from-blue-600 to-purple-800', zones: ['VIP', 'Standard', 'General'], description: 'Deep Space Pristhina - Wednesday' },
-    { id: 3, name: 'Event You Don\'t Wanna Miss', day: 'WEDNESDAY', date: 'Wednesday, 25 March 2026, 19:00', price: '8 EUR', image: 'bg-gray-900', zones: ['VIP', 'General'], description: 'An event you don\'t wanna miss' },
-    { id: 4, name: 'E ENJTE', day: 'THURSDAY', date: 'Thursday, 26 March 2026, 10:00', price: '3 EUR', image: 'bg-gradient-to-br from-purple-600 to-blue-800', zones: ['VIP', 'Standard', 'General'], description: 'Deep Space Pristhina - Thursday' },
-    { id: 5, name: 'E PREMTE', day: 'FRIDAY', date: 'Friday, 27 March 2026, 12:30', price: '3 EUR', image: 'bg-gradient-to-br from-purple-500 to-blue-600', zones: ['VIP', 'Standard', 'General'], description: 'Deep Space Pristhina - Friday' },
-    { id: 6, name: 'E SHTUNE', day: 'SATURDAY', date: 'Saturday, 28 March 2026, 12:00', price: '3 EUR', image: 'bg-gradient-to-br from-blue-500 to-purple-600', zones: ['VIP', 'Standard', 'General'], description: 'Deep Space Pristhina - Saturday' },
-    { id: 7, name: 'E DIELË', day: 'SUNDAY', date: 'Sunday, 29 March 2026, 12:00', price: '3 EUR', image: 'bg-gradient-to-br from-purple-500 to-blue-700', zones: ['VIP', 'Standard', 'General'], description: 'Deep Space Pristhina - Sunday' },
-    { id: 8, name: 'ANA CARLA MAZA', day: 'EVENT', date: 'Saturday, 01 April 2026, 22:00', price: '10 EUR', image: 'bg-gradient-to-br from-pink-500 to-red-500', zones: ['VIP', 'Standard', 'General'], description: 'Ana Carla Maza Live Performance' },
-    { id: 9, name: 'Cactus in the Snow', day: 'EVENT', date: 'Saturday, 11 April 2026, 13:00', price: '25 EUR', image: 'bg-gradient-to-br from-green-400 to-yellow-300', zones: ['VIP', 'Standard', 'General'], description: 'Cactus in the Snow Festival' },
-    { id: 10, name: 'PETER PAN QUARTET', day: 'EVENT', date: 'Saturday, 11 April 2026, 21:00', price: '3 EUR', image: 'bg-gray-800', zones: ['Standard', 'General'], description: 'Peter Pan Quartet Performance' },
-    { id: 11, name: 'DURIM', day: 'EVENT', date: 'Sunday, 12 April 2026, 10:00', price: '200 EUR', image: 'bg-gray-700', zones: ['VIP', 'Standard'], description: 'DURIM Concert' },
-    { id: 12, name: 'Muse-X Festival', day: 'FESTIVAL', date: 'Friday, 17 April 2026, 19:00', price: '25 EUR', image: 'bg-gradient-to-br from-yellow-400 to-red-600', zones: ['VIP', 'Standard', 'General', 'Student'], description: 'Muse-X Festival 2 Day Pass' },
-    { id: 13, name: 'LYREL.CS', day: 'EVENT', date: 'Wednesday, 22 April 2026, 20:00', price: '31 EUR', image: 'bg-gradient-to-br from-blue-400 to-cyan-400', zones: ['Standard', 'General'], description: 'LYREL.CS Live' },
-    { id: 14, name: 'EXHALE TIBANA', day: 'EVENT', date: 'Saturday, 25 April 2026, 23:00', price: '8 EUR', image: 'bg-gradient-to-br from-pink-600 to-purple-700', zones: ['VIP', 'Standard', 'General'], description: 'Exhale Tibana Experience' },
-    { id: 15, name: 'Stand UPR 2nd Edition', day: 'EVENT', date: 'Tuesday, 12 May 2026, 20:00', price: '28 EUR', image: 'bg-gradient-to-br from-orange-500 to-red-600', zones: ['Standard', 'General'], description: 'Stand Up Comedy Show' },
-    { id: 16, name: 'MARCEL DETTMANN - RAVE', day: 'EVENT', date: 'Friday, 15 May 2026, 21:00', price: '15 EUR', image: 'bg-gradient-to-br from-red-700 to-red-900', zones: ['VIP', 'Standard', 'General'], description: 'Marcel Dettmann Rave' }
-  ];
+  const { events } = useEvents();
+
+  // Display mapping for events (gradient images and display info)
+  const displayMapping = {
+    1: { day: 'TUESDAY', date: 'Tuesday, 24 March 2026, 10:00', image: 'bg-gradient-to-br from-purple-600 to-purple-800' },
+    2: { day: 'WEDNESDAY', date: 'Wednesday, 25 March 2026, 10:00', image: 'bg-gradient-to-br from-blue-600 to-purple-800' },
+    3: { day: 'WEDNESDAY', date: 'Wednesday, 25 March 2026, 19:00', image: 'bg-gray-900' },
+    4: { day: 'THURSDAY', date: 'Thursday, 26 March 2026, 10:00', image: 'bg-gradient-to-br from-purple-600 to-blue-800' },
+    5: { day: 'FRIDAY', date: 'Friday, 27 March 2026, 12:30', image: 'bg-gradient-to-br from-purple-500 to-blue-600' },
+    6: { day: 'SATURDAY', date: 'Saturday, 28 March 2026, 12:00', image: 'bg-gradient-to-br from-blue-500 to-purple-600' },
+    7: { day: 'SUNDAY', date: 'Sunday, 29 March 2026, 12:00', image: 'bg-gradient-to-br from-purple-500 to-blue-700' },
+    8: { day: 'EVENT', date: 'Saturday, 01 April 2026, 22:00', image: 'bg-gradient-to-br from-pink-500 to-red-500' },
+    9: { day: 'EVENT', date: 'Saturday, 11 April 2026, 13:00', image: 'bg-gradient-to-br from-green-400 to-yellow-300' },
+    10: { day: 'EVENT', date: 'Saturday, 11 April 2026, 21:00', image: 'bg-gray-800' },
+    11: { day: 'EVENT', date: 'Sunday, 12 April 2026, 10:00', image: 'bg-gray-700' },
+    12: { day: 'FESTIVAL', date: 'Friday, 17 April 2026, 19:00', image: 'bg-gradient-to-br from-yellow-400 to-red-600' },
+    13: { day: 'EVENT', date: 'Wednesday, 22 April 2026, 20:00', image: 'bg-gradient-to-br from-blue-400 to-cyan-400' },
+    14: { day: 'EVENT', date: 'Saturday, 25 April 2026, 23:00', image: 'bg-gradient-to-br from-pink-600 to-purple-700' },
+    15: { day: 'EVENT', date: 'Tuesday, 12 May 2026, 20:00', image: 'bg-gradient-to-br from-orange-500 to-red-600' },
+    16: { day: 'EVENT', date: 'Friday, 15 May 2026, 21:00', image: 'bg-gradient-to-br from-red-700 to-red-900' }
+  };
 
   return (
     <div className="min-h-screen bg-madverse-dark">
@@ -773,35 +1038,38 @@ function EventsPage() {
 
           {/* Events Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {events.map(event => (
-            <div key={event.id} className="bg-madverse-darker rounded-lg overflow-hidden border border-gray-700 group">
-              {/* Event Image */}
-              <div className={`h-32 w-full ${event.image} flex items-center justify-center relative overflow-hidden`}>
-                <div className="absolute inset-0 bg-black/30" />
-                <div className="relative z-10 text-center">
-                  <div className="text-white font-display text-xl font-bold">{event.name}</div>
-                  <div className="text-gray-300 font-body text-xs uppercase tracking-wider">{event.day}</div>
-                </div>
-              </div>
-
-              {/* Event Info */}
-              <div className="p-4">
-                <p className="text-gray-400 font-body text-xs mb-3">{event.date}</p>
-                
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-white font-body font-semibold text-sm">FROM {event.price}</span>
+          {Object.entries(events).map(([id, event]) => {
+            const display = displayMapping[id] || { day: 'EVENT', date: 'TBA', image: 'bg-gray-700' };
+            return (
+              <div key={id} className="bg-madverse-darker rounded-lg overflow-hidden border border-gray-700 group">
+                {/* Event Image */}
+                <div className={`h-32 w-full ${display.image} flex items-center justify-center relative overflow-hidden`}>
+                  <div className="absolute inset-0 bg-black/30" />
+                  <div className="relative z-10 text-center">
+                    <div className="text-white font-display text-xl font-bold">{event.name}</div>
+                    <div className="text-gray-300 font-body text-xs uppercase tracking-wider">{display.day}</div>
+                  </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => navigate(`/event/${event.id}`)}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-body font-bold text-sm py-2 rounded transition-colors uppercase tracking-wide"
-                >
-                  BUY TICKETS
-                </button>
+                {/* Event Info */}
+                <div className="p-4">
+                  <p className="text-gray-400 font-body text-xs mb-3">{display.date}</p>
+                  
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-white font-body font-semibold text-sm">FROM €{event.price}</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/event/${id}`)}
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-body font-bold text-sm py-2 rounded transition-colors uppercase tracking-wide"
+                  >
+                    BUY TICKETS
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           </div>
         </div>
       </div>
@@ -814,38 +1082,19 @@ function EventDetailPage() {
   const { id } = useParams();
   const eventId = parseInt(id);
   const { basket, addToBasket } = useBasket();
+  const { events } = useEvents();
   
   const [selectedZone, setSelectedZone] = useState('General');
   const [quantity, setQuantity] = useState(1);
 
-  // Event data matching our events list
-  const eventsData = {
-    1: { name: 'E MARTÉ', price: 300, zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], description: 'Deep Space Pristhina - Tuesday' },
-    2: { name: 'E MERKURÉ', price: 300, zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], description: 'Deep Space Pristhina - Wednesday' },
-    3: { name: 'Event You Don\'t Wanna Miss', price: 800, zones: ['VIP - 1200€', 'General - 800€'], description: 'An event you don\'t wanna miss' },
-    4: { name: 'E ENJTE', price: 300, zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], description: 'Deep Space Pristhina - Thursday' },
-    5: { name: 'E PREMTE', price: 300, zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], description: 'Deep Space Pristhina - Friday' },
-    6: { name: 'E SHTUNE', price: 300, zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], description: 'Deep Space Pristhina - Saturday' },
-    7: { name: 'E DIELË', price: 300, zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], description: 'Deep Space Pristhina - Sunday' },
-    8: { name: 'ANA CARLA MAZA', price: 1000, zones: ['VIP - 1500€', 'Standard - 1000€', 'General - 800€'], description: 'Ana Carla Maza Live' },
-    9: { name: 'Cactus in the Snow', price: 2500, zones: ['VIP - 4000€', 'Standard - 2500€', 'General - 1500€'], description: 'Cactus in the Snow' },
-    10: { name: 'PETER PAN QUARTET', price: 300, zones: ['Standard - 400€', 'General - 300€'], description: 'Peter Pan Quartet' },
-    11: { name: 'DURIM', price: 20000, zones: ['VIP - 30000€', 'Standard - 20000€'], description: 'DURIM Concert' },
-    12: { name: 'Muse-X Festival', price: 2500, zones: ['VIP - 4500€', 'Standard - 2500€', 'General - 1500€', 'Student - 1000€'], description: 'Muse-X Festival 2 Day' },
-    13: { name: 'LYREL.CS', price: 3100, zones: ['Standard - 4000€', 'General - 3100€'], description: 'LYREL.CS Live' },
-    14: { name: 'EXHALE TIBANA', price: 800, zones: ['VIP - 1200€', 'Standard - 900€', 'General - 800€'], description: 'Exhale Tibana' },
-    15: { name: 'Stand UPR 2nd Edition', price: 2800, zones: ['Standard - 3200€', 'General - 2800€'], description: 'Stand Up Comedy' },
-    16: { name: 'MARCEL DETTMANN - RAVE', price: 1500, zones: ['VIP - 2000€', 'Standard - 1500€', 'General - 1000€'], description: 'Marcel Dettmann Rave' }
-  };
-
-  const event = eventsData[eventId];
+  const event = events[eventId];
 
   // Set initial zone when event loads
   useEffect(() => {
     if (event && event.zones.length > 0) {
       setSelectedZone(event.zones[0]);
     }
-  }, [eventId]);
+  }, [eventId, event]);
 
   if (!event) {
     return (
