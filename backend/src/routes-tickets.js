@@ -10,10 +10,8 @@ router.use(authMiddleware);
 router.get('/', async (req, res) => {
   try {
     const pool = await getDbPool();
-    const result = await pool
-      .request()
-      .query('SELECT Id, Title, Description, Status, Priority, CreatedAt, UpdatedAt FROM Tickets ORDER BY CreatedAt DESC');
-    return res.json(result.recordset);
+    const [results] = await pool.query('SELECT Id, Title, Description, Status, Priority, CreatedAt, UpdatedAt FROM Tickets ORDER BY CreatedAt DESC');
+    return res.json(results);
   } catch (err) {
     console.error('Get tickets error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -25,16 +23,13 @@ router.get('/:id', async (req, res) => {
   const { id } = req.params;
   try {
     const pool = await getDbPool();
-    const result = await pool
-      .request()
-      .input('id', sql.Int, id)
-      .query('SELECT Id, Title, Description, Status, Priority, CreatedAt, UpdatedAt FROM Tickets WHERE Id = @id');
+    const [results] = await pool.query('SELECT Id, Title, Description, Status, Priority, CreatedAt, UpdatedAt FROM Tickets WHERE Id = ?', [id]);
 
-    if (result.recordset.length === 0) {
+    if (results.length === 0) {
       return res.status(404).json({ message: 'Ticket not found' });
     }
 
-    return res.json(result.recordset[0]);
+    return res.json(results[0]);
   } catch (err) {
     console.error('Get ticket error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -50,15 +45,10 @@ router.post('/', async (req, res) => {
 
   try {
     const pool = await getDbPool();
-    const result = await pool
-      .request()
-      .input('title', sql.NVarChar, title)
-      .input('description', sql.NVarChar, description || '')
-      .input('status', sql.NVarChar, status)
-      .input('priority', sql.NVarChar, priority)
-      .query('INSERT INTO Tickets (Title, Description, Status, Priority, CreatedAt, UpdatedAt) OUTPUT INSERTED.* VALUES (@title, @description, @status, @priority, GETUTCDATE(), GETUTCDATE())');
+    const result = await pool.query('INSERT INTO Tickets (Title, Description, Status, Priority, CreatedAt, UpdatedAt) VALUES (?, ?, ?, ?, NOW(), NOW())', [title, description || '', status, priority]);
+    const [inserted] = await pool.query('SELECT Id, Title, Description, Status, Priority, CreatedAt, UpdatedAt FROM Tickets WHERE Id = ?', [result.insertId]);
 
-    return res.status(201).json(result.recordset[0]);
+    return res.status(201).json(inserted[0]);
   } catch (err) {
     console.error('Create ticket error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -73,36 +63,23 @@ router.put('/:id', async (req, res) => {
   try {
     const pool = await getDbPool();
 
-    const existing = await pool
-      .request()
-      .input('id', sql.Int, id)
-      .query('SELECT Id FROM Tickets WHERE Id = @id');
+    const [existing] = await pool.query('SELECT Id FROM Tickets WHERE Id = ?', [id]);
 
-    if (existing.recordset.length === 0) {
+    if (existing.length === 0) {
       return res.status(404).json({ message: 'Ticket not found' });
     }
 
-    await pool
-      .request()
-      .input('id', sql.Int, id)
-      .input('title', sql.NVarChar, title || null)
-      .input('description', sql.NVarChar, description || null)
-      .input('status', sql.NVarChar, status || null)
-      .input('priority', sql.NVarChar, priority || null)
-      .query(`UPDATE Tickets
-              SET Title = ISNULL(@title, Title),
-                  Description = ISNULL(@description, Description),
-                  Status = ISNULL(@status, Status),
-                  Priority = ISNULL(@priority, Priority),
-                  UpdatedAt = GETUTCDATE()
-              WHERE Id = @id`);
+    await pool.query(`UPDATE Tickets
+              SET Title = COALESCE(?, Title),
+                  Description = COALESCE(?, Description),
+                  Status = COALESCE(?, Status),
+                  Priority = COALESCE(?, Priority),
+                  UpdatedAt = NOW()
+              WHERE Id = ?`, [title || null, description || null, status || null, priority || null, id]);
 
-    const updated = await pool
-      .request()
-      .input('id', sql.Int, id)
-      .query('SELECT Id, Title, Description, Status, Priority, CreatedAt, UpdatedAt FROM Tickets WHERE Id = @id');
+    const [updated] = await pool.query('SELECT Id, Title, Description, Status, Priority, CreatedAt, UpdatedAt FROM Tickets WHERE Id = ?', [id]);
 
-    return res.json(updated.recordset[0]);
+    return res.json(updated[0]);
   } catch (err) {
     console.error('Update ticket error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -115,19 +92,13 @@ router.delete('/:id', async (req, res) => {
   try {
     const pool = await getDbPool();
 
-    const existing = await pool
-      .request()
-      .input('id', sql.Int, id)
-      .query('SELECT Id FROM Tickets WHERE Id = @id');
+    const [existing] = await pool.query('SELECT Id FROM Tickets WHERE Id = ?', [id]);
 
-    if (existing.recordset.length === 0) {
+    if (existing.length === 0) {
       return res.status(404).json({ message: 'Ticket not found' });
     }
 
-    await pool
-      .request()
-      .input('id', sql.Int, id)
-      .query('DELETE FROM Tickets WHERE Id = @id');
+    await pool.query('DELETE FROM Tickets WHERE Id = ?', [id]);
 
     return res.status(204).send();
   } catch (err) {

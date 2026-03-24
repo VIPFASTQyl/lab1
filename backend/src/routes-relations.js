@@ -13,24 +13,23 @@ router.get('/event-organizers', async (req, res) => {
   try {
     const pool = await getDbPool();
     let query = `SELECT EventOrganizerId, EventId, OrganizerId, Role, Notes FROM EventOrganizers`;
-    const request = pool.request();
+    const params = [];
     
     if (req.query.eventId) {
-      request.input('eventId', sql.Int, req.query.eventId);
-      query += ' WHERE EventId = @eventId';
+      query += ' WHERE EventId = ?';
+      params.push(req.query.eventId);
     }
     if (req.query.organizerId) {
       if (req.query.eventId) {
-        request.input('organizerId', sql.Int, req.query.organizerId);
-        query += ' AND OrganizerId = @organizerId';
+        query += ' AND OrganizerId = ?';
       } else {
-        request.input('organizerId', sql.Int, req.query.organizerId);
-        query += ' WHERE OrganizerId = @organizerId';
+        query += ' WHERE OrganizerId = ?';
       }
+      params.push(req.query.organizerId);
     }
     query += ' ORDER BY EventId, Role';
-    const result = await request.query(query);
-    return res.json(result.recordset);
+    const [results] = await pool.query(query, params);
+    return res.json(results);
   } catch (err) {
     console.error('Get event organizers error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -41,14 +40,11 @@ router.get('/event-organizers', async (req, res) => {
 router.get('/event-organizers/:id', async (req, res) => {
   try {
     const pool = await getDbPool();
-    const result = await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('SELECT EventOrganizerId, EventId, OrganizerId, Role, Notes FROM EventOrganizers WHERE EventOrganizerId = @id');
-    if (result.recordset.length === 0) {
+    const [results] = await pool.query('SELECT EventOrganizerId, EventId, OrganizerId, Role, Notes FROM EventOrganizers WHERE EventOrganizerId = ?', [req.params.id]);
+    if (results.length === 0) {
       return res.status(404).json({ message: 'Event organizer relationship not found' });
     }
-    return res.json(result.recordset[0]);
+    return res.json(results[0]);
   } catch (err) {
     console.error('Get event organizer error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -63,16 +59,10 @@ router.post('/event-organizers', async (req, res) => {
   }
   try {
     const pool = await getDbPool();
-    const result = await pool
-      .request()
-      .input('eventId', sql.Int, eventId)
-      .input('organizerId', sql.Int, organizerId)
-      .input('role', sql.NVarChar, role || null)
-      .input('notes', sql.NVarChar, notes || null)
-      .query(`INSERT INTO EventOrganizers (EventId, OrganizerId, Role, Notes)
-              OUTPUT INSERTED.*
-              VALUES (@eventId, @organizerId, @role, @notes)`);
-    return res.status(201).json(result.recordset[0]);
+    const result = await pool.query(`INSERT INTO EventOrganizers (EventId, OrganizerId, Role, Notes)
+              VALUES (?, ?, ?, ?)`, [eventId, organizerId, role || null, notes || null]);
+    const [inserted] = await pool.query('SELECT EventOrganizerId, EventId, OrganizerId, Role, Notes FROM EventOrganizers WHERE EventOrganizerId = ?', [result.insertId]);
+    return res.status(201).json(inserted[0]);
   } catch (err) {
     console.error('Create event organizer error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -83,28 +73,17 @@ router.post('/event-organizers', async (req, res) => {
 router.put('/event-organizers/:id', async (req, res) => {
   try {
     const pool = await getDbPool();
-    const existing = await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('SELECT EventOrganizerId FROM EventOrganizers WHERE EventOrganizerId = @id');
-    if (existing.recordset.length === 0) {
+    const [existing] = await pool.query('SELECT EventOrganizerId FROM EventOrganizers WHERE EventOrganizerId = ?', [req.params.id]);
+    if (existing.length === 0) {
       return res.status(404).json({ message: 'Event organizer relationship not found' });
     }
     const { role, notes } = req.body;
-    await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .input('role', sql.NVarChar, role || null)
-      .input('notes', sql.NVarChar, notes || null)
-      .query(`UPDATE EventOrganizers
-              SET Role = ISNULL(@role, Role),
-                  Notes = ISNULL(@notes, Notes)
-              WHERE EventOrganizerId = @id`);
-    const updated = await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('SELECT EventOrganizerId, EventId, OrganizerId, Role, Notes FROM EventOrganizers WHERE EventOrganizerId = @id');
-    return res.json(updated.recordset[0]);
+    await pool.query(`UPDATE EventOrganizers
+              SET Role = COALESCE(?, Role),
+                  Notes = COALESCE(?, Notes)
+              WHERE EventOrganizerId = ?`, [role || null, notes || null, req.params.id]);
+    const [updated] = await pool.query('SELECT EventOrganizerId, EventId, OrganizerId, Role, Notes FROM EventOrganizers WHERE EventOrganizerId = ?', [req.params.id]);
+    return res.json(updated[0]);
   } catch (err) {
     console.error('Update event organizer error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -115,17 +94,11 @@ router.put('/event-organizers/:id', async (req, res) => {
 router.delete('/event-organizers/:id', async (req, res) => {
   try {
     const pool = await getDbPool();
-    const existing = await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('SELECT EventOrganizerId FROM EventOrganizers WHERE EventOrganizerId = @id');
-    if (existing.recordset.length === 0) {
+    const [existing] = await pool.query('SELECT EventOrganizerId FROM EventOrganizers WHERE EventOrganizerId = ?', [req.params.id]);
+    if (existing.length === 0) {
       return res.status(404).json({ message: 'Event organizer relationship not found' });
     }
-    await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('DELETE FROM EventOrganizers WHERE EventOrganizerId = @id');
+    await pool.query('DELETE FROM EventOrganizers WHERE EventOrganizerId = ?', [req.params.id]);
     return res.status(204).send();
   } catch (err) {
     console.error('Delete event organizer error', err);

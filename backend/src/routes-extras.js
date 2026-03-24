@@ -13,24 +13,23 @@ router.get('/payments', async (req, res) => {
   try {
     const pool = await getDbPool();
     let query = `SELECT PaymentId, OrderId, PaymentDate, Amount, PaymentMethod, Status, Reference, CreatedAt FROM Payments`;
-    const request = pool.request();
+    const params = [];
     
     if (req.query.orderId) {
-      request.input('orderId', sql.Int, req.query.orderId);
-      query += ' WHERE OrderId = @orderId';
+      query += ' WHERE OrderId = ?';
+      params.push(req.query.orderId);
     }
     if (req.query.status) {
       if (req.query.orderId) {
-        request.input('status', sql.NVarChar, req.query.status);
-        query += ' AND Status = @status';
+        query += ' AND Status = ?';
       } else {
-        request.input('status', sql.NVarChar, req.query.status);
-        query += ' WHERE Status = @status';
+        query += ' WHERE Status = ?';
       }
+      params.push(req.query.status);
     }
     query += ' ORDER BY PaymentDate DESC';
-    const result = await request.query(query);
-    return res.json(result.recordset);
+    const [results] = await pool.query(query, params);
+    return res.json(results);
   } catch (err) {
     console.error('Get payments error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -41,14 +40,11 @@ router.get('/payments', async (req, res) => {
 router.get('/payments/:id', async (req, res) => {
   try {
     const pool = await getDbPool();
-    const result = await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('SELECT PaymentId, OrderId, PaymentDate, Amount, PaymentMethod, Status, Reference, CreatedAt FROM Payments WHERE PaymentId = @id');
-    if (result.recordset.length === 0) {
+    const [results] = await pool.query('SELECT PaymentId, OrderId, PaymentDate, Amount, PaymentMethod, Status, Reference, CreatedAt FROM Payments WHERE PaymentId = ?', [req.params.id]);
+    if (results.length === 0) {
       return res.status(404).json({ message: 'Payment not found' });
     }
-    return res.json(result.recordset[0]);
+    return res.json(results[0]);
   } catch (err) {
     console.error('Get payment error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -63,16 +59,10 @@ router.post('/payments', async (req, res) => {
   }
   try {
     const pool = await getDbPool();
-    const result = await pool
-      .request()
-      .input('orderId', sql.Int, orderId)
-      .input('amount', sql.Decimal(10, 2), amount)
-      .input('paymentMethod', sql.NVarChar, paymentMethod)
-      .input('reference', sql.NVarChar, reference || null)
-      .query(`INSERT INTO Payments (OrderId, Amount, PaymentMethod, Status, Reference)
-              OUTPUT INSERTED.*
-              VALUES (@orderId, @amount, @paymentMethod, 'Pending', @reference)`);
-    return res.status(201).json(result.recordset[0]);
+    const result = await pool.query(`INSERT INTO Payments (OrderId, Amount, PaymentMethod, Status, Reference)
+              VALUES (?, ?, ?, 'Pending', ?)`, [orderId, amount, paymentMethod, reference || null]);
+    const [inserted] = await pool.query('SELECT PaymentId, OrderId, PaymentDate, Amount, PaymentMethod, Status, Reference, CreatedAt FROM Payments WHERE PaymentId = ?', [result.insertId]);
+    return res.status(201).json(inserted[0]);
   } catch (err) {
     console.error('Create payment error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -83,30 +73,18 @@ router.post('/payments', async (req, res) => {
 router.put('/payments/:id', async (req, res) => {
   try {
     const pool = await getDbPool();
-    const existing = await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('SELECT PaymentId FROM Payments WHERE PaymentId = @id');
-    if (existing.recordset.length === 0) {
+    const [existing] = await pool.query('SELECT PaymentId FROM Payments WHERE PaymentId = ?', [req.params.id]);
+    if (existing.length === 0) {
       return res.status(404).json({ message: 'Payment not found' });
     }
     const { amount, status, reference } = req.body;
-    await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .input('amount', sql.Decimal(10, 2), amount || null)
-      .input('status', sql.NVarChar, status || null)
-      .input('reference', sql.NVarChar, reference || null)
-      .query(`UPDATE Payments
-              SET Amount = ISNULL(@amount, Amount),
-                  Status = ISNULL(@status, Status),
-                  Reference = ISNULL(@reference, Reference)
-              WHERE PaymentId = @id`);
-    const updated = await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('SELECT PaymentId, OrderId, PaymentDate, Amount, PaymentMethod, Status, Reference, CreatedAt FROM Payments WHERE PaymentId = @id');
-    return res.json(updated.recordset[0]);
+    await pool.query(`UPDATE Payments
+              SET Amount = COALESCE(?, Amount),
+                  Status = COALESCE(?, Status),
+                  Reference = COALESCE(?, Reference)
+              WHERE PaymentId = ?`, [amount || null, status || null, reference || null, req.params.id]);
+    const [updated] = await pool.query('SELECT PaymentId, OrderId, PaymentDate, Amount, PaymentMethod, Status, Reference, CreatedAt FROM Payments WHERE PaymentId = ?', [req.params.id]);
+    return res.json(updated[0]);
   } catch (err) {
     console.error('Update payment error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -117,17 +95,11 @@ router.put('/payments/:id', async (req, res) => {
 router.delete('/payments/:id', async (req, res) => {
   try {
     const pool = await getDbPool();
-    const existing = await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('SELECT PaymentId FROM Payments WHERE PaymentId = @id');
-    if (existing.recordset.length === 0) {
+    const [existing] = await pool.query('SELECT PaymentId FROM Payments WHERE PaymentId = ?', [req.params.id]);
+    if (existing.length === 0) {
       return res.status(404).json({ message: 'Payment not found' });
     }
-    await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('DELETE FROM Payments WHERE PaymentId = @id');
+    await pool.query('DELETE FROM Payments WHERE PaymentId = ?', [req.params.id]);
     return res.status(204).send();
   } catch (err) {
     console.error('Delete payment error', err);
@@ -141,10 +113,8 @@ router.delete('/payments/:id', async (req, res) => {
 router.get('/organizers', async (req, res) => {
   try {
     const pool = await getDbPool();
-    const result = await pool
-      .request()
-      .query('SELECT OrganizerId, Name, Email, Phone, Address, OrganizerType, Description, CreatedAt FROM Organizers ORDER BY Name');
-    return res.json(result.recordset);
+    const [results] = await pool.query('SELECT OrganizerId, Name, Email, Phone, Address, OrganizerType, Description, CreatedAt FROM Organizers ORDER BY Name');
+    return res.json(results);
   } catch (err) {
     console.error('Get organizers error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -155,14 +125,11 @@ router.get('/organizers', async (req, res) => {
 router.get('/organizers/:id', async (req, res) => {
   try {
     const pool = await getDbPool();
-    const result = await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('SELECT OrganizerId, Name, Email, Phone, Address, OrganizerType, Description, CreatedAt FROM Organizers WHERE OrganizerId = @id');
-    if (result.recordset.length === 0) {
+    const [results] = await pool.query('SELECT OrganizerId, Name, Email, Phone, Address, OrganizerType, Description, CreatedAt FROM Organizers WHERE OrganizerId = ?', [req.params.id]);
+    if (results.length === 0) {
       return res.status(404).json({ message: 'Organizer not found' });
     }
-    return res.json(result.recordset[0]);
+    return res.json(results[0]);
   } catch (err) {
     console.error('Get organizer error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -177,18 +144,10 @@ router.post('/organizers', async (req, res) => {
   }
   try {
     const pool = await getDbPool();
-    const result = await pool
-      .request()
-      .input('name', sql.NVarChar, name)
-      .input('email', sql.NVarChar, email || null)
-      .input('phone', sql.NVarChar, phone || null)
-      .input('address', sql.NVarChar, address || null)
-      .input('organizerType', sql.NVarChar, organizerType)
-      .input('description', sql.NVarChar, description || null)
-      .query(`INSERT INTO Organizers (Name, Email, Phone, Address, OrganizerType, Description)
-              OUTPUT INSERTED.*
-              VALUES (@name, @email, @phone, @address, @organizerType, @description)`);
-    return res.status(201).json(result.recordset[0]);
+    const result = await pool.query(`INSERT INTO Organizers (Name, Email, Phone, Address, OrganizerType, Description)
+              VALUES (?, ?, ?, ?, ?, ?)`, [name, email || null, phone || null, address || null, organizerType, description || null]);
+    const [inserted] = await pool.query('SELECT OrganizerId, Name, Email, Phone, Address, OrganizerType, Description, CreatedAt FROM Organizers WHERE OrganizerId = ?', [result.insertId]);
+    return res.status(201).json(inserted[0]);
   } catch (err) {
     console.error('Create organizer error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -199,36 +158,21 @@ router.post('/organizers', async (req, res) => {
 router.put('/organizers/:id', async (req, res) => {
   try {
     const pool = await getDbPool();
-    const existing = await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('SELECT OrganizerId FROM Organizers WHERE OrganizerId = @id');
-    if (existing.recordset.length === 0) {
+    const [existing] = await pool.query('SELECT OrganizerId FROM Organizers WHERE OrganizerId = ?', [req.params.id]);
+    if (existing.length === 0) {
       return res.status(404).json({ message: 'Organizer not found' });
     }
     const { name, email, phone, address, organizerType, description } = req.body;
-    await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .input('name', sql.NVarChar, name || null)
-      .input('email', sql.NVarChar, email || null)
-      .input('phone', sql.NVarChar, phone || null)
-      .input('address', sql.NVarChar, address || null)
-      .input('organizerType', sql.NVarChar, organizerType || null)
-      .input('description', sql.NVarChar, description || null)
-      .query(`UPDATE Organizers
-              SET Name = ISNULL(@name, Name),
-                  Email = ISNULL(@email, Email),
-                  Phone = ISNULL(@phone, Phone),
-                  Address = ISNULL(@address, Address),
-                  OrganizerType = ISNULL(@organizerType, OrganizerType),
-                  Description = ISNULL(@description, Description)
-              WHERE OrganizerId = @id`);
-    const updated = await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('SELECT OrganizerId, Name, Email, Phone, Address, OrganizerType, Description, CreatedAt FROM Organizers WHERE OrganizerId = @id');
-    return res.json(updated.recordset[0]);
+    await pool.query(`UPDATE Organizers
+              SET Name = COALESCE(?, Name),
+                  Email = COALESCE(?, Email),
+                  Phone = COALESCE(?, Phone),
+                  Address = COALESCE(?, Address),
+                  OrganizerType = COALESCE(?, OrganizerType),
+                  Description = COALESCE(?, Description)
+              WHERE OrganizerId = ?`, [name || null, email || null, phone || null, address || null, organizerType || null, description || null, req.params.id]);
+    const [updated] = await pool.query('SELECT OrganizerId, Name, Email, Phone, Address, OrganizerType, Description, CreatedAt FROM Organizers WHERE OrganizerId = ?', [req.params.id]);
+    return res.json(updated[0]);
   } catch (err) {
     console.error('Update organizer error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -239,17 +183,11 @@ router.put('/organizers/:id', async (req, res) => {
 router.delete('/organizers/:id', async (req, res) => {
   try {
     const pool = await getDbPool();
-    const existing = await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('SELECT OrganizerId FROM Organizers WHERE OrganizerId = @id');
-    if (existing.recordset.length === 0) {
+    const [existing] = await pool.query('SELECT OrganizerId FROM Organizers WHERE OrganizerId = ?', [req.params.id]);
+    if (existing.length === 0) {
       return res.status(404).json({ message: 'Organizer not found' });
     }
-    await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('DELETE FROM Organizers WHERE OrganizerId = @id');
+    await pool.query('DELETE FROM Organizers WHERE OrganizerId = ?', [req.params.id]);
     return res.status(204).send();
   } catch (err) {
     console.error('Delete organizer error', err);
@@ -263,10 +201,8 @@ router.delete('/organizers/:id', async (req, res) => {
 router.get('/discounts', async (req, res) => {
   try {
     const pool = await getDbPool();
-    const result = await pool
-      .request()
-      .query('SELECT DiscountId, Code, Description, Percentage, StartDate, EndDate, Status, CreatedAt FROM Discounts ORDER BY Code');
-    return res.json(result.recordset);
+    const [results] = await pool.query('SELECT DiscountId, Code, Description, Percentage, StartDate, EndDate, Status, CreatedAt FROM Discounts ORDER BY Code');
+    return res.json(results);
   } catch (err) {
     console.error('Get discounts error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -281,17 +217,10 @@ router.post('/discounts', async (req, res) => {
   }
   try {
     const pool = await getDbPool();
-    const result = await pool
-      .request()
-      .input('code', sql.NVarChar, code)
-      .input('description', sql.NVarChar, description || null)
-      .input('percentage', sql.Decimal(5, 2), percentage)
-      .input('startDate', sql.Date, startDate)
-      .input('endDate', sql.Date, endDate)
-      .query(`INSERT INTO Discounts (Code, Description, Percentage, StartDate, EndDate, Status)
-              OUTPUT INSERTED.*
-              VALUES (@code, @description, @percentage, @startDate, @endDate, 'Active')`);
-    return res.status(201).json(result.recordset[0]);
+    const result = await pool.query(`INSERT INTO Discounts (Code, Description, Percentage, StartDate, EndDate, Status)
+              VALUES (?, ?, ?, ?, ?, 'Active')`, [code, description || null, percentage, startDate, endDate]);
+    const [inserted] = await pool.query('SELECT DiscountId, Code, Description, Percentage, StartDate, EndDate, Status, CreatedAt FROM Discounts WHERE DiscountId = ?', [result.insertId]);
+    return res.status(201).json(inserted[0]);
   } catch (err) {
     console.error('Create discount error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -302,30 +231,18 @@ router.post('/discounts', async (req, res) => {
 router.put('/discounts/:id', async (req, res) => {
   try {
     const pool = await getDbPool();
-    const existing = await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('SELECT DiscountId FROM Discounts WHERE DiscountId = @id');
-    if (existing.recordset.length === 0) {
+    const [existing] = await pool.query('SELECT DiscountId FROM Discounts WHERE DiscountId = ?', [req.params.id]);
+    if (existing.length === 0) {
       return res.status(404).json({ message: 'Discount not found' });
     }
     const { description, percentage, status } = req.body;
-    await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .input('description', sql.NVarChar, description || null)
-      .input('percentage', sql.Decimal(5, 2), percentage || null)
-      .input('status', sql.NVarChar, status || null)
-      .query(`UPDATE Discounts
-              SET Description = ISNULL(@description, Description),
-                  Percentage = ISNULL(@percentage, Percentage),
-                  Status = ISNULL(@status, Status)
-              WHERE DiscountId = @id`);
-    const updated = await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('SELECT DiscountId, Code, Description, Percentage, StartDate, EndDate, Status, CreatedAt FROM Discounts WHERE DiscountId = @id');
-    return res.json(updated.recordset[0]);
+    await pool.query(`UPDATE Discounts
+              SET Description = COALESCE(?, Description),
+                  Percentage = COALESCE(?, Percentage),
+                  Status = COALESCE(?, Status)
+              WHERE DiscountId = ?`, [description || null, percentage || null, status || null, req.params.id]);
+    const [updated] = await pool.query('SELECT DiscountId, Code, Description, Percentage, StartDate, EndDate, Status, CreatedAt FROM Discounts WHERE DiscountId = ?', [req.params.id]);
+    return res.json(updated[0]);
   } catch (err) {
     console.error('Update discount error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -336,17 +253,11 @@ router.put('/discounts/:id', async (req, res) => {
 router.delete('/discounts/:id', async (req, res) => {
   try {
     const pool = await getDbPool();
-    const existing = await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('SELECT DiscountId FROM Discounts WHERE DiscountId = @id');
-    if (existing.recordset.length === 0) {
+    const [existing] = await pool.query('SELECT DiscountId FROM Discounts WHERE DiscountId = ?', [req.params.id]);
+    if (existing.length === 0) {
       return res.status(404).json({ message: 'Discount not found' });
     }
-    await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('DELETE FROM Discounts WHERE DiscountId = @id');
+    await pool.query('DELETE FROM Discounts WHERE DiscountId = ?', [req.params.id]);
     return res.status(204).send();
   } catch (err) {
     console.error('Delete discount error', err);
@@ -361,24 +272,23 @@ router.get('/ratings', async (req, res) => {
   try {
     const pool = await getDbPool();
     let query = `SELECT RatingId, EventId, ClientId, Rating, Comment, RatingDate FROM Ratings`;
-    const request = pool.request();
+    const params = [];
     
     if (req.query.eventId) {
-      request.input('eventId', sql.Int, req.query.eventId);
-      query += ' WHERE EventId = @eventId';
+      query += ' WHERE EventId = ?';
+      params.push(req.query.eventId);
     }
     if (req.query.clientId) {
       if (req.query.eventId) {
-        request.input('clientId', sql.Int, req.query.clientId);
-        query += ' AND ClientId = @clientId';
+        query += ' AND ClientId = ?';
       } else {
-        request.input('clientId', sql.Int, req.query.clientId);
-        query += ' WHERE ClientId = @clientId';
+        query += ' WHERE ClientId = ?';
       }
+      params.push(req.query.clientId);
     }
     query += ' ORDER BY RatingDate DESC';
-    const result = await request.query(query);
-    return res.json(result.recordset);
+    const [results] = await pool.query(query, params);
+    return res.json(results);
   } catch (err) {
     console.error('Get ratings error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -389,14 +299,11 @@ router.get('/ratings', async (req, res) => {
 router.get('/ratings/:id', async (req, res) => {
   try {
     const pool = await getDbPool();
-    const result = await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('SELECT RatingId, EventId, ClientId, Rating, Comment, RatingDate FROM Ratings WHERE RatingId = @id');
-    if (result.recordset.length === 0) {
+    const [results] = await pool.query('SELECT RatingId, EventId, ClientId, Rating, Comment, RatingDate FROM Ratings WHERE RatingId = ?', [req.params.id]);
+    if (results.length === 0) {
       return res.status(404).json({ message: 'Rating not found' });
     }
-    return res.json(result.recordset[0]);
+    return res.json(results[0]);
   } catch (err) {
     console.error('Get rating error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -414,16 +321,10 @@ router.post('/ratings', async (req, res) => {
   }
   try {
     const pool = await getDbPool();
-    const result = await pool
-      .request()
-      .input('eventId', sql.Int, eventId)
-      .input('clientId', sql.Int, clientId)
-      .input('rating', sql.Int, rating)
-      .input('comment', sql.NVarChar, comment || null)
-      .query(`INSERT INTO Ratings (EventId, ClientId, Rating, Comment)
-              OUTPUT INSERTED.*
-              VALUES (@eventId, @clientId, @rating, @comment)`);
-    return res.status(201).json(result.recordset[0]);
+    const result = await pool.query(`INSERT INTO Ratings (EventId, ClientId, Rating, Comment)
+              VALUES (?, ?, ?, ?)`, [eventId, clientId, rating, comment || null]);
+    const [inserted] = await pool.query('SELECT RatingId, EventId, ClientId, Rating, Comment, RatingDate FROM Ratings WHERE RatingId = ?', [result.insertId]);
+    return res.status(201).json(inserted[0]);
   } catch (err) {
     console.error('Create rating error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -434,26 +335,18 @@ router.post('/ratings', async (req, res) => {
 router.put('/ratings/:id', async (req, res) => {
   try {
     const pool = await getDbPool();
-    const existing = await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('SELECT RatingId FROM Ratings WHERE RatingId = @id');
-    if (existing.recordset.length === 0) {
+    const [existing] = await pool.query('SELECT RatingId FROM Ratings WHERE RatingId = ?', [req.params.id]);
+    if (existing.length === 0) {
       return res.status(404).json({ message: 'Rating not found' });
     }
     const { rating, comment } = req.body;
     if (rating !== undefined && (rating < 1 || rating > 5)) {
       return res.status(400).json({ message: 'Rating must be between 1 and 5' });
     }
-    await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .input('rating', sql.Int, rating)
-      .input('comment', sql.NVarChar, comment || null)
-      .query(`UPDATE Ratings 
-              SET Rating = ISNULL(@rating, Rating),
-                  Comment = ISNULL(@comment, Comment)
-              WHERE RatingId = @id`);
+    await pool.query(`UPDATE Ratings 
+              SET Rating = COALESCE(?, Rating),
+                  Comment = COALESCE(?, Comment)
+              WHERE RatingId = ?`, [rating, comment || null, req.params.id]);
     return res.json({ message: 'Rating updated successfully' });
   } catch (err) {
     console.error('Update rating error', err);
@@ -465,17 +358,11 @@ router.put('/ratings/:id', async (req, res) => {
 router.delete('/ratings/:id', async (req, res) => {
   try {
     const pool = await getDbPool();
-    const existing = await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('SELECT RatingId FROM Ratings WHERE RatingId = @id');
-    if (existing.recordset.length === 0) {
+    const [existing] = await pool.query('SELECT RatingId FROM Ratings WHERE RatingId = ?', [req.params.id]);
+    if (existing.length === 0) {
       return res.status(404).json({ message: 'Rating not found' });
     }
-    await pool
-      .request()
-      .input('id', sql.Int, req.params.id)
-      .query('DELETE FROM Ratings WHERE RatingId = @id');
+    await pool.query('DELETE FROM Ratings WHERE RatingId = ?', [req.params.id]);
     return res.status(204).send();
   } catch (err) {
     console.error('Delete rating error', err);
