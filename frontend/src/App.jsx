@@ -93,6 +93,104 @@ function useEvents() {
   return { events, addEvent, updateEvent, deleteEvent };
 }
 
+// Auth Context - for managing user authentication
+const AuthContext = createContext();
+
+function useAuth() {
+  const [user, setUser] = useState(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      const decoded = decodeJwtToken(token);
+      return decoded || null;
+    }
+    return null;
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const register = async (email, password, name) => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_BASE}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.message || 'Registration failed');
+        setLoading(false);
+        return false;
+      }
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        const decoded = decodeJwtToken(data.token);
+        setUser(decoded || { email, name });
+        setLoading(false);
+        return true;
+      }
+      setLoading(false);
+      return false;
+    } catch (err) {
+      setError('Network error during registration');
+      setLoading(false);
+      return false;
+    }
+  };
+
+  const login = async (email, password) => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_BASE}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.message || 'Login failed');
+        setLoading(false);
+        return false;
+      }
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        const decoded = decodeJwtToken(data.token);
+        setUser(decoded || { email });
+        setLoading(false);
+        return true;
+      }
+      setLoading(false);
+      return false;
+    } catch (err) {
+      setError('Network error during login');
+      setLoading(false);
+      return false;
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('isAdmin');
+    setUser(null);
+    setError('');
+  };
+
+  return { user, loading, error, register, login, logout };
+}
+
+function decodeJwtToken(token) {
+  try {
+    const [, payload] = token.split('.');
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
 function getToken() {
   return localStorage.getItem('token');
 }
@@ -111,16 +209,6 @@ function isAdminClient() {
   return localStorage.getItem('isAdmin') === 'true';
 }
 
-function decodeJwt(token) {
-  try {
-    const [, payload] = token.split('.');
-    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
-    return JSON.parse(json);
-  } catch {
-    return null;
-  }
-}
-
 function ProtectedRoute({ children, requireAdmin = false }) {
   const token = getToken();
   if (!token) {
@@ -130,6 +218,248 @@ function ProtectedRoute({ children, requireAdmin = false }) {
     return <Navigate to="/" replace />;
   }
   return children;
+}
+
+function LoginPage() {
+  const navigate = useNavigate();
+  const { login, loading, error } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [formError, setFormError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setFormError('');
+
+    if (!email || !password) {
+      setFormError('Please fill in all fields');
+      return;
+    }
+
+    const success = await login(email, password);
+    if (success) {
+      navigate('/events');
+    } else {
+      setFormError(error || 'Login failed. Please try again.');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-madverse-dark flex items-center justify-center p-4">
+      <div className="max-w-md w-full">
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
+              <span className="text-black font-bold text-lg">M</span>
+            </div>
+          </div>
+          <h1 className="text-4xl font-bold font-display text-white mb-2">MADVERSE</h1>
+          <p className="text-gray-400 font-body">Sign in to your account</p>
+        </div>
+
+        <div className="bg-madverse-darker border border-gray-700 rounded-lg p-8 space-y-6">
+          {formError && (
+            <div className="bg-red-500/20 border border-red-500 text-red-200 p-4 rounded font-body text-sm">
+              {formError}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-gray-300 font-body text-sm mb-2">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div>
+              <label className="block text-gray-300 font-body text-sm mb-2">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white font-body font-semibold py-3 rounded uppercase tracking-wide transition-colors"
+            >
+              {loading ? 'Signing In...' : 'Sign In'}
+            </button>
+          </form>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-700"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-madverse-darker text-gray-500 font-body">or</span>
+            </div>
+          </div>
+
+          <p className="text-center text-gray-400 font-body">
+            Don't have an account?{' '}
+            <button
+              onClick={() => navigate('/register')}
+              className="text-purple-400 hover:text-purple-300 font-semibold transition-colors"
+            >
+              Create one
+            </button>
+          </p>
+        </div>
+
+        <p className="text-center text-gray-500 text-xs font-body mt-4">
+          Demo: Use any email/password to register
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function RegisterPage() {
+  const navigate = useNavigate();
+  const { register, loading, error } = useAuth();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [formError, setFormError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setFormError('');
+
+    if (!name || !email || !password || !confirmPassword) {
+      setFormError('Please fill in all fields');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setFormError('Passwords do not match');
+      return;
+    }
+
+    if (password.length < 6) {
+      setFormError('Password must be at least 6 characters');
+      return;
+    }
+
+    const success = await register(email, password, name);
+    if (success) {
+      navigate('/events');
+    } else {
+      setFormError(error || 'Registration failed. Please try again.');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-madverse-dark flex items-center justify-center p-4">
+      <div className="max-w-md w-full">
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
+              <span className="text-black font-bold text-lg">M</span>
+            </div>
+          </div>
+          <h1 className="text-4xl font-bold font-display text-white mb-2">MADVERSE</h1>
+          <p className="text-gray-400 font-body">Create your account</p>
+        </div>
+
+        <div className="bg-madverse-darker border border-gray-700 rounded-lg p-8 space-y-6">
+          {formError && (
+            <div className="bg-red-500/20 border border-red-500 text-red-200 p-4 rounded font-body text-sm">
+              {formError}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-gray-300 font-body text-sm mb-2">Full Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                placeholder="John Doe"
+              />
+            </div>
+
+            <div>
+              <label className="block text-gray-300 font-body text-sm mb-2">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div>
+              <label className="block text-gray-300 font-body text-sm mb-2">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <div>
+              <label className="block text-gray-300 font-body text-sm mb-2">Confirm Password</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white font-body font-semibold py-3 rounded uppercase tracking-wide transition-colors"
+            >
+              {loading ? 'Creating Account...' : 'Create Account'}
+            </button>
+          </form>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-700"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-madverse-darker text-gray-500 font-body">or</span>
+            </div>
+          </div>
+
+          <p className="text-center text-gray-400 font-body">
+            Already have an account?{' '}
+            <button
+              onClick={() => navigate('/login')}
+              className="text-purple-400 hover:text-purple-300 font-semibold transition-colors"
+            >
+              Sign in
+            </button>
+          </p>
+        </div>
+
+        <p className="text-center text-gray-500 text-xs font-body mt-4">
+          By creating an account, you agree to our terms
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function DashboardPage() {
@@ -778,12 +1108,25 @@ function LandingPage() {
               </button>
               <button
                 type="button"
+                onClick={() => navigate('/login')}
+                className="text-sm uppercase font-body font-semibold border border-white text-white hover:bg-white hover:text-madverse-dark px-3 py-1 rounded transition-colors"
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/register')}
+                className="text-sm uppercase font-body font-semibold bg-purple-600 text-white hover:bg-purple-700 px-3 py-1 rounded transition-colors"
+              >
+                Register
+              </button>
+              <button
+                type="button"
                 onClick={() => setDarkMode(v => !v)}
                 className="text-sm uppercase font-body font-semibold border border-gray-500 px-3 py-1 rounded"
               >
                 {darkMode ? 'Light Mode' : 'Dark Mode'}
               </button>
-
             </div>
           </div>
         </div>
@@ -1367,6 +1710,8 @@ export default function App() {
         }
       />
       <Route path="/checkout" element={<CheckoutPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
