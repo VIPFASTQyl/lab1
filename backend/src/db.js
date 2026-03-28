@@ -38,6 +38,7 @@ async function createTablesIfNotExist() {
       LastName TEXT NOT NULL,
       Email TEXT UNIQUE NOT NULL,
       PasswordHash TEXT NOT NULL,
+      IsAdmin INTEGER DEFAULT 0,
       PhoneNumber TEXT,
       Address TEXT,
       CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -164,6 +165,16 @@ async function createTablesIfNotExist() {
   
   for (const sql of tables) {
     await db.exec(sql);
+  }
+  
+  // Add IsAdmin column to Users table if it doesn't exist (migration)
+  try {
+    await db.exec('ALTER TABLE Users ADD COLUMN IsAdmin INTEGER DEFAULT 0');
+  } catch (err) {
+    // Column already exists, ignore error
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Migration warning:', err.message);
+    }
   }
 }
 

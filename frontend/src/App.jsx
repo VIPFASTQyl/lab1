@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext, createContext } from 'react';
-import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom';
 
 const API_BASE = '/api';
 
@@ -22,12 +22,53 @@ function useBasket() {
   };
 
   const removeFromBasket = (index) => {
+    const itemToRemove = basket[index];
+    if (itemToRemove) {
+      // Restore stock in events
+      try {
+        const events = JSON.parse(localStorage.getItem('madverseEvents') || '{}');
+        if (events[itemToRemove.eventId] && events[itemToRemove.eventId].ticketTypes) {
+          const ticketType = events[itemToRemove.eventId].ticketTypes[itemToRemove.ticketType];
+          if (ticketType) {
+            // Restore the available stock
+            ticketType.available += itemToRemove.quantity;
+            localStorage.setItem('madverseEvents', JSON.stringify(events));
+          }
+        }
+      } catch (error) {
+        console.error('Error restoring stock:', error);
+      }
+    }
+
     const newBasket = basket.filter((_, i) => i !== index);
     setBasket(newBasket);
     localStorage.setItem('madverseBasket', JSON.stringify(newBasket));
   };
 
   const clearBasket = () => {
+    // Restore stock for all items in basket
+    try {
+      const events = JSON.parse(localStorage.getItem('madverseEvents') || '{}');
+      let hasChanges = false;
+
+      basket.forEach(item => {
+        if (events[item.eventId] && events[item.eventId].ticketTypes) {
+          const ticketType = events[item.eventId].ticketTypes[item.ticketType];
+          if (ticketType) {
+            // Restore the available stock
+            ticketType.available += item.quantity;
+            hasChanges = true;
+          }
+        }
+      });
+
+      if (hasChanges) {
+        localStorage.setItem('madverseEvents', JSON.stringify(events));
+      }
+    } catch (error) {
+      console.error('Error clearing basket stock:', error);
+    }
+
     setBasket([]);
     localStorage.removeItem('madverseBasket');
   };
@@ -45,24 +86,181 @@ function useEvents() {
       if (stored) {
         return JSON.parse(stored);
       }
-      // Default events if none exist
+      // Default events if none exist - with ticket types and stock
       return {
-        1: { name: 'E MARTÉ', price: 300, zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], description: 'Deep Space Pristhina - Tuesday' },
-        2: { name: 'E MERKURÉ', price: 300, zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], description: 'Deep Space Pristhina - Wednesday' },
-        3: { name: 'Event You Don\'t Wanna Miss', price: 800, zones: ['VIP - 1200€', 'General - 800€'], description: 'An event you don\'t wanna miss' },
-        4: { name: 'E ENJTE', price: 300, zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], description: 'Deep Space Pristhina - Thursday' },
-        5: { name: 'E PREMTE', price: 300, zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], description: 'Deep Space Pristhina - Friday' },
-        6: { name: 'E SHTUNE', price: 300, zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], description: 'Deep Space Pristhina - Saturday' },
-        7: { name: 'E DIELË', price: 300, zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], description: 'Deep Space Pristhina - Sunday' },
-        8: { name: 'ANA CARLA MAZA', price: 1000, zones: ['VIP - 1500€', 'Standard - 1000€', 'General - 800€'], description: 'Ana Carla Maza Live' },
-        9: { name: 'Cactus in the Snow', price: 2500, zones: ['VIP - 4000€', 'Standard - 2500€', 'General - 1500€'], description: 'Cactus in the Snow' },
-        10: { name: 'PETER PAN QUARTET', price: 300, zones: ['Standard - 400€', 'General - 300€'], description: 'Peter Pan Quartet' },
-        11: { name: 'DURIM', price: 20000, zones: ['VIP - 30000€', 'Standard - 20000€'], description: 'DURIM Concert' },
-        12: { name: 'Muse-X Festival', price: 2500, zones: ['VIP - 4500€', 'Standard - 2500€', 'General - 1500€', 'Student - 1000€'], description: 'Muse-X Festival 2 Day' },
-        13: { name: 'LYREL.CS', price: 3100, zones: ['Standard - 4000€', 'General - 3100€'], description: 'LYREL.CS Live' },
-        14: { name: 'EXHALE TIBANA', price: 800, zones: ['VIP - 1200€', 'Standard - 900€', 'General - 800€'], description: 'Exhale Tibana' },
-        15: { name: 'Stand UPR 2nd Edition', price: 2800, zones: ['Standard - 3200€', 'General - 2800€'], description: 'Stand Up Comedy' },
-        16: { name: 'MARCEL DETTMANN - RAVE', price: 1500, zones: ['VIP - 2000€', 'Standard - 1500€', 'General - 1000€'], description: 'Marcel Dettmann Rave' }
+        1: { 
+          name: 'E MARTÉ', 
+          price: 300, 
+          zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], 
+          description: 'Deep Space Pristhina - Tuesday',
+          ticketTypes: {
+            vip: { name: 'VIP', price: 500, stock: 20, available: 20 },
+            group: { name: 'Group of 4', price: 1200, stock: 30, available: 30 },
+            standard: { name: 'Standard', price: 300, stock: 200, available: 200 }
+          }
+        },
+        2: { 
+          name: 'E MERKURÉ', 
+          price: 300, 
+          zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], 
+          description: 'Deep Space Pristhina - Wednesday',
+          ticketTypes: {
+            vip: { name: 'VIP', price: 500, stock: 20, available: 20 },
+            group: { name: 'Group of 4', price: 1200, stock: 30, available: 30 },
+            standard: { name: 'Standard', price: 300, stock: 200, available: 200 }
+          }
+        },
+        3: { 
+          name: 'Event You Don\'t Wanna Miss', 
+          price: 800, 
+          zones: ['VIP - 1200€', 'General - 800€'], 
+          description: 'An event you don\'t wanna miss',
+          ticketTypes: {
+            vip: { name: 'VIP', price: 1200, stock: 20, available: 20 },
+            group: { name: 'Group of 4', price: 2800, stock: 40, available: 40 },
+            standard: { name: 'Standard', price: 800, stock: 300, available: 300 }
+          }
+        },
+        4: { 
+          name: 'E ENJTE', 
+          price: 300, 
+          zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], 
+          description: 'Deep Space Pristhina - Thursday',
+          ticketTypes: {
+            vip: { name: 'VIP', price: 500, stock: 20, available: 20 },
+            group: { name: 'Group of 4', price: 1200, stock: 30, available: 30 },
+            standard: { name: 'Standard', price: 300, stock: 200, available: 200 }
+          }
+        },
+        5: { 
+          name: 'E PREMTE', 
+          price: 300, 
+          zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], 
+          description: 'Deep Space Pristhina - Friday',
+          ticketTypes: {
+            vip: { name: 'VIP', price: 500, stock: 20, available: 20 },
+            group: { name: 'Group of 4', price: 1200, stock: 30, available: 30 },
+            standard: { name: 'Standard', price: 300, stock: 200, available: 200 }
+          }
+        },
+        6: { 
+          name: 'E SHTUNE', 
+          price: 300, 
+          zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], 
+          description: 'Deep Space Pristhina - Saturday',
+          ticketTypes: {
+            vip: { name: 'VIP', price: 500, stock: 20, available: 20 },
+            group: { name: 'Group of 4', price: 1200, stock: 30, available: 30 },
+            standard: { name: 'Standard', price: 300, stock: 200, available: 200 }
+          }
+        },
+        7: { 
+          name: 'E DIELË', 
+          price: 300, 
+          zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], 
+          description: 'Deep Space Pristhina - Sunday',
+          ticketTypes: {
+            vip: { name: 'VIP', price: 500, stock: 20, available: 20 },
+            group: { name: 'Group of 4', price: 1200, stock: 30, available: 30 },
+            standard: { name: 'Standard', price: 300, stock: 200, available: 200 }
+          }
+        },
+        8: { 
+          name: 'ANA CARLA MAZA', 
+          price: 1000, 
+          zones: ['VIP - 1500€', 'Standard - 1000€', 'General - 800€'], 
+          description: 'Ana Carla Maza Live',
+          ticketTypes: {
+            vip: { name: 'VIP', price: 1500, stock: 50, available: 50 },
+            group: { name: 'Group of 4', price: 3600, stock: 60, available: 60 },
+            standard: { name: 'Standard', price: 800, stock: 400, available: 400 }
+          }
+        },
+        9: { 
+          name: 'Cactus in the Snow', 
+          price: 2500, 
+          zones: ['VIP - 4000€', 'Standard - 2500€', 'General - 1500€'], 
+          description: 'Cactus in the Snow',
+          ticketTypes: {
+            vip: { name: 'VIP', price: 4000, stock: 30, available: 30 },
+            group: { name: 'Group of 4', price: 9000, stock: 50, available: 50 },
+            standard: { name: 'Standard', price: 1500, stock: 500, available: 500 }
+          }
+        },
+        10: { 
+          name: 'PETER PAN QUARTET', 
+          price: 300, 
+          zones: ['Standard - 400€', 'General - 300€'], 
+          description: 'Peter Pan Quartet',
+          ticketTypes: {
+            group: { name: 'Group of 4', price: 1200, stock: 40, available: 40 },
+            standard: { name: 'Standard', price: 300, stock: 250, available: 250 }
+          }
+        },
+        11: { 
+          name: 'DURIM', 
+          price: 20000, 
+          zones: ['VIP - 30000€', 'Standard - 20000€'], 
+          description: 'DURIM Concert',
+          ticketTypes: {
+            vip: { name: 'VIP', price: 30000, stock: 15, available: 15 },
+            group: { name: 'Group of 4', price: 72000, stock: 20, available: 20 },
+            standard: { name: 'Standard', price: 20000, stock: 150, available: 150 }
+          }
+        },
+        12: { 
+          name: 'Muse-X Festival', 
+          price: 2500, 
+          zones: ['VIP - 4500€', 'Standard - 2500€', 'General - 1500€', 'Student - 1000€'], 
+          description: 'Muse-X Festival 2 Day',
+          ticketTypes: {
+            vip: { name: 'VIP', price: 4500, stock: 100, available: 100 },
+            group: { name: 'Group of 4', price: 10000, stock: 150, available: 150 },
+            standard: { name: 'Standard', price: 2500, stock: 1000, available: 1000 }
+          }
+        },
+        13: { 
+          name: 'LYREL.CS', 
+          price: 3100, 
+          zones: ['Standard - 4000€', 'General - 3100€'], 
+          description: 'LYREL.CS Live',
+          ticketTypes: {
+            group: { name: 'Group of 4', price: 12000, stock: 50, available: 50 },
+            standard: { name: 'Standard', price: 3100, stock: 400, available: 400 }
+          }
+        },
+        14: { 
+          name: 'EXHALE TIBANA', 
+          price: 800, 
+          zones: ['VIP - 1200€', 'Standard - 900€', 'General - 800€'], 
+          description: 'Exhale Tibana',
+          ticketTypes: {
+            vip: { name: 'VIP', price: 1200, stock: 25, available: 25 },
+            group: { name: 'Group of 4', price: 3000, stock: 35, available: 35 },
+            standard: { name: 'Standard', price: 800, stock: 300, available: 300 }
+          }
+        },
+        15: { 
+          name: 'Stand UPR 2nd Edition', 
+          price: 2800, 
+          zones: ['Standard - 3200€', 'General - 2800€'], 
+          description: 'Stand Up Comedy',
+          ticketTypes: {
+            group: { name: 'Group of 4', price: 10000, stock: 40, available: 40 },
+            standard: { name: 'Standard', price: 2800, stock: 350, available: 350 }
+          }
+        },
+        16: { 
+          name: 'MARCEL DETTMANN - RAVE', 
+          price: 1500, 
+          zones: ['VIP - 2000€', 'Standard - 1500€', 'General - 1000€'], 
+          description: 'Marcel Dettmann Rave',
+          ticketTypes: {
+            vip: { name: 'VIP', price: 2000, stock: 35, available: 35 },
+            group: { name: 'Group of 4', price: 5000, stock: 60, available: 60 },
+            standard: { name: 'Standard', price: 1500, stock: 400, available: 400 }
+          }
+        }
       };
     } catch {
       return {};
@@ -206,7 +404,10 @@ function setIsAdminFlag(isAdmin) {
 }
 
 function isAdminClient() {
-  return localStorage.getItem('isAdmin') === 'true';
+  const token = getToken();
+  if (!token) return false;
+  const decoded = decodeJwtToken(token);
+  return decoded?.isAdmin === true;
 }
 
 function ProtectedRoute({ children, requireAdmin = false }) {
@@ -464,52 +665,76 @@ function RegisterPage() {
 
 function DashboardPage() {
   const [dashData, setDashData] = useState(null);
+  const [eventTickets, setEventTickets] = useState([]);
   const [error, setError] = useState('');
   const [showEventModal, setShowEventModal] = useState(false);
   const [editingEventId, setEditingEventId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
-  const [formData, setFormData] = useState({ name: '', price: '', zones: '', description: '', image: null, imagePreview: null });
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    description: '', 
+    image: null, 
+    imagePreview: null,
+    ticketTypes: {
+      vip: { name: 'VIP', enabled: false, price: '', stock: '' },
+      group: { name: 'Group of 4', enabled: false, price: '', stock: '' },
+      standard: { name: 'Standard', enabled: false, price: '', stock: '' }
+    }
+  });
+  
+  // Object Map states
+  const [showObjectMapModal, setShowObjectMapModal] = useState(false);
+  const [selectedEventForMap, setSelectedEventForMap] = useState(null);
+  const [mapLayoutType, setMapLayoutType] = useState('cinema'); // cinema or festival
+  const [mapRows, setMapRows] = useState(5);
+  const [mapCols, setMapCols] = useState(8);
+  const [mapSeats, setMapSeats] = useState([]); // Array of seat objects
+  const [selectedSeatType, setSelectedSeatType] = useState('vip'); // Type to assign to clicked seats
+  
   const { events, addEvent, updateEvent, deleteEvent } = useEvents();
 
   useEffect(() => {
     async function loadDashboard() {
       try {
-        const res = await fetch(`${API_BASE}/dashboard/summary`, {
-          headers: {
-            Authorization: `Bearer ${getToken()}`
-          }
+        const token = getToken();
+        
+        // Fetch summary data
+        const summaryRes = await fetch(`${API_BASE}/dashboard/summary`, {
+          headers: { Authorization: `Bearer ${token}` }
         });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          setError(data.message || 'Failed to load dashboard');
-          return;
+        if (summaryRes.ok) {
+          const summaryData = await summaryRes.json();
+          setDashData(summaryData);
         }
-        const data = await res.json();
-        setDashData(data);
+
+        // Fetch events data
+        const eventsRes = await fetch(`${API_BASE}/dashboard/events`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (eventsRes.ok) {
+          const eventsData = await eventsRes.json();
+          setEventTickets(eventsData);
+        }
       } catch (err) {
-        setError('Network error');
+        console.error('Dashboard load error:', err);
+        setError('Failed to load dashboard data');
       }
     }
+
     loadDashboard();
+    
+    // Refresh dashboard data every 10 seconds for real-time updates
+    const interval = setInterval(loadDashboard, 10000);
+    
+    return () => clearInterval(interval);
   }, []);
 
-  // Mock event ticket data for demonstration
-  const eventTickets = [
-    { name: 'E MARTÉ', total: 500, sold: 380, revenue: 1140 },
-    { name: 'E MERKURÉ', total: 500, sold: 420, revenue: 1260 },
-    { name: 'E ENJTE', total: 500, sold: 365, revenue: 1095 },
-    { name: 'E PREMTE', total: 500, sold: 445, revenue: 1335 },
-    { name: 'E SHTUNE', total: 1000, sold: 895, revenue: 2685 },
-    { name: 'E DIELË', total: 1000, sold: 920, revenue: 2760 },
-    { name: 'ANA CARLA MAZA', total: 2000, sold: 1650, revenue: 16500 },
-    { name: 'Muse-X Festival', total: 5000, sold: 4200, revenue: 105000 }
-  ];
-
-  const totalTicketsCapacity = eventTickets.reduce((sum, e) => sum + e.total, 0);
-  const totalTicketsSold = eventTickets.reduce((sum, e) => sum + e.sold, 0);
-  const totalRevenue = eventTickets.reduce((sum, e) => sum + e.revenue, 0);
-  const ticketPercentage = ((totalTicketsSold / totalTicketsCapacity) * 100).toFixed(1);
-  const activeMembers = Math.floor(Math.random() * 150) + 50;
+  // Calculate totals from fetched data
+  const totalTicketsCapacity = eventTickets.reduce((sum, e) => sum + (e.total || 0), 0);
+  const totalTicketsSold = eventTickets.reduce((sum, e) => sum + (e.sold || 0), 0);
+  const totalRevenue = eventTickets.reduce((sum, e) => sum + parseFloat(e.revenue || 0), 0);
+  const ticketPercentage = dashData?.occupancyPercentage || (totalTicketsCapacity > 0 ? ((totalTicketsSold / totalTicketsCapacity) * 100).toFixed(1) : 0);
+  const activeMembers = dashData?.activeMembers || 0;
 
   const StatCard = ({ icon, title, value, subtitle, color }) => (
     <div className="bg-madverse-darker border border-gray-700 rounded-lg p-6 hover:border-purple-500 transition-all">
@@ -527,17 +752,31 @@ function DashboardPage() {
   const handleOpenModal = (eventId = null) => {
     if (eventId && events[eventId]) {
       const event = events[eventId];
+      const ticketTypes = {
+        vip: { name: 'VIP', enabled: !!event.ticketTypes?.vip?.price, price: event.ticketTypes?.vip?.price || '', stock: event.ticketTypes?.vip?.stock || '' },
+        group: { name: 'Group of 4', enabled: !!event.ticketTypes?.group?.price, price: event.ticketTypes?.group?.price || '', stock: event.ticketTypes?.group?.stock || '' },
+        standard: { name: 'Standard', enabled: !!event.ticketTypes?.standard?.price, price: event.ticketTypes?.standard?.price || '', stock: event.ticketTypes?.standard?.stock || '' }
+      };
       setFormData({
         name: event.name,
-        price: event.price,
-        zones: event.zones.join(', '),
         description: event.description,
         image: event.image || null,
-        imagePreview: event.image || null
+        imagePreview: event.image || null,
+        ticketTypes
       });
       setEditingEventId(eventId);
     } else {
-      setFormData({ name: '', price: '', zones: '', description: '', image: null, imagePreview: null });
+      setFormData({ 
+        name: '', 
+        description: '', 
+        image: null, 
+        imagePreview: null,
+        ticketTypes: {
+          vip: { name: 'VIP', enabled: false, price: '', stock: '' },
+          group: { name: 'Group of 4', enabled: false, price: '', stock: '' },
+          standard: { name: 'Standard', enabled: false, price: '', stock: '' }
+        }
+      });
       setEditingEventId(null);
     }
     setShowEventModal(true);
@@ -545,7 +784,17 @@ function DashboardPage() {
 
   const handleCloseModal = () => {
     setShowEventModal(false);
-    setFormData({ name: '', price: '', zones: '', description: '', image: null, imagePreview: null });
+    setFormData({ 
+      name: '', 
+      description: '', 
+      image: null, 
+      imagePreview: null,
+      ticketTypes: {
+        vip: { name: 'VIP', enabled: false, price: '', stock: '' },
+        group: { name: 'Group of 4', enabled: false, price: '', stock: '' },
+        standard: { name: 'Standard', enabled: false, price: '', stock: '' }
+      }
+    });
     setEditingEventId(null);
   };
 
@@ -561,17 +810,53 @@ function DashboardPage() {
   };
 
   const handleSaveEvent = () => {
-    if (!formData.name || !formData.price || !formData.zones || !formData.description) {
-      alert('Please fill in all fields');
+    if (!formData.name || !formData.description) {
+      alert('Please fill in event name and description');
       return;
     }
 
+    // Check if at least one ticket type is enabled
+    const enabledTypes = Object.values(formData.ticketTypes).filter(t => t.enabled);
+    if (enabledTypes.length === 0) {
+      alert('Please enable at least one ticket type');
+      return;
+    }
+
+    // Validate ticket type prices and stock
+    for (const type of enabledTypes) {
+      if (!type.price || type.price <= 0) {
+        alert(`Please enter a valid price for ${type.name}`);
+        return;
+      }
+      if (!type.stock || type.stock <= 0) {
+        alert(`Please enter valid stock for ${type.name}`);
+        return;
+      }
+    }
+
+    // Build ticket types object
+    const ticketTypes = {};
+    for (const [key, type] of Object.entries(formData.ticketTypes)) {
+      if (type.enabled) {
+        ticketTypes[key] = {
+          name: type.name,
+          price: parseFloat(type.price),
+          stock: parseInt(type.stock),
+          available: parseInt(type.stock)
+        };
+      }
+    }
+
+    // Calculate base price from ticket types (lowest price)
+    const basePrice = Math.min(...enabledTypes.map(t => parseFloat(t.price)));
+
     const eventData = {
       name: formData.name,
-      price: parseInt(formData.price),
-      zones: formData.zones.split(',').map(z => z.trim()),
+      price: basePrice,
+      zones: [], // Empty zones - pricing comes from ticket types
       description: formData.description,
-      image: formData.image || null
+      image: formData.image || null,
+      ticketTypes
     };
 
     if (editingEventId) {
@@ -588,6 +873,86 @@ function DashboardPage() {
     deleteEvent(id);
     setDeleteConfirmId(null);
     alert('Event deleted successfully');
+  };
+
+  // Object Map handlers
+  const openObjectMapEditor = (eventId) => {
+    const event = events[eventId];
+    const existingMap = event.seatingLayout || { enabled: false, type: 'cinema', rows: 5, cols: 8, seats: [] };
+    
+    setSelectedEventForMap(eventId);
+    setMapLayoutType(existingMap.type || 'cinema');
+    setMapRows(existingMap.rows || 5);
+    setMapCols(existingMap.cols || 8);
+    setMapSeats(existingMap.seats || generateEmptySeats(existingMap.rows || 5, existingMap.cols || 8));
+    setShowObjectMapModal(true);
+  };
+
+  const generateEmptySeats = (rows, cols) => {
+    const seats = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        seats.push({
+          id: `${r}-${c}`,
+          row: r,
+          col: c,
+          type: '', // vip, group, standard
+          available: true,
+          selectedBy: null
+        });
+      }
+    }
+    return seats;
+  };
+
+  const regenerateGrid = (rows, cols) => {
+    setMapRows(rows);
+    setMapCols(cols);
+    setMapSeats(generateEmptySeats(rows, cols));
+  };
+
+  const handleSeatClick = (seatId) => {
+    const seat = mapSeats.find(s => s.id === seatId);
+    if (seat) {
+      const newSeats = mapSeats.map(s =>
+        s.id === seatId ? { ...s, type: s.type === selectedSeatType ? '' : selectedSeatType } : s
+      );
+      setMapSeats(newSeats);
+    }
+  };
+
+  const saveObjectMap = () => {
+    if (!selectedEventForMap) return;
+    
+    const event = events[selectedEventForMap];
+    const updatedEvent = {
+      ...event,
+      seatingLayout: {
+        enabled: true,
+        type: mapLayoutType,
+        rows: mapRows,
+        cols: mapCols,
+        seats: mapSeats
+      }
+    };
+    
+    updateEvent(selectedEventForMap, updatedEvent);
+    alert('Seating layout saved successfully!');
+    setShowObjectMapModal(false);
+  };
+
+  const clearObjectMap = () => {
+    if (!selectedEventForMap) return;
+    
+    const event = events[selectedEventForMap];
+    const updatedEvent = {
+      ...event,
+      seatingLayout: { enabled: false, seats: [] }
+    };
+    
+    updateEvent(selectedEventForMap, updatedEvent);
+    setShowObjectMapModal(false);
+    alert('Seating layout cleared!');
   };
 
   return (
@@ -627,7 +992,7 @@ function DashboardPage() {
           <StatCard
             icon="💰"
             title="Total Revenue"
-            value={`€${totalRevenue.toLocaleString()}`}
+            value={`€${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
             subtitle="All events combined"
             color="text-yellow-400"
           />
@@ -673,7 +1038,7 @@ function DashboardPage() {
                           <span className={`text-xs font-semibold ${occupancyColor}`}>{occupancy}%</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-400 font-semibold">€{event.revenue.toLocaleString()}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-400 font-semibold">€{parseFloat(event.revenue || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     </tr>
                   );
                 })}
@@ -682,11 +1047,11 @@ function DashboardPage() {
           </div>
 
           {/* Summary Footer */}
-          <div className="bg-madverse-dark border-t border-gray-700 px-6 py-4 flex justify-between items-center">
+          <div className="bg-madverse-dark border-t border-gray-700 px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-8">
             <div>
               <p className="text-gray-400 font-body text-sm">Total across all events</p>
             </div>
-            <div className="flex gap-8">
+            <div className="flex gap-4 sm:gap-8 w-full sm:w-auto">
               <div className="text-right">
                 <p className="text-gray-400 font-body text-xs">CAPACITY</p>
                 <p className="text-white font-display text-lg">{totalTicketsCapacity.toLocaleString()}</p>
@@ -697,7 +1062,7 @@ function DashboardPage() {
               </div>
               <div className="text-right">
                 <p className="text-gray-400 font-body text-xs">REVENUE</p>
-                <p className="text-yellow-400 font-display text-lg">€{totalRevenue.toLocaleString()}</p>
+                <p className="text-yellow-400 font-display text-lg">€{totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
             </div>
           </div>
@@ -723,27 +1088,34 @@ function DashboardPage() {
               <thead>
                 <tr className="bg-madverse-dark border-b border-gray-700">
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Event Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Price</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Zones</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Ticket Types</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Description</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(events).map(([id, event]) => (
-                  <tr key={id} className="border-b border-gray-700 hover:bg-madverse-darker/50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-white">{event.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-400 font-semibold">€{event.price}</td>
-                    <td className="px-6 py-4 text-sm text-gray-300">{event.zones.length} zones</td>
-                    <td className="px-6 py-4 text-sm text-gray-400 truncate">{event.description}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleOpenModal(id)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white font-body text-xs py-1 px-3 rounded transition-colors"
-                        >
-                          Edit
-                        </button>
+                {Object.entries(events).map(([id, event]) => {
+                  const ticketTypesList = event.ticketTypes ? Object.values(event.ticketTypes).map(t => `${t.name} €${t.price}`).join(', ') : 'No types';
+                  return (
+                    <tr key={id} className="border-b border-gray-700 hover:bg-madverse-darker/50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-white">{event.name}</td>
+                      <td className="px-6 py-4 text-sm text-yellow-400 font-semibold">{ticketTypesList}</td>
+                      <td className="px-6 py-4 text-sm text-gray-400 truncate">{event.description}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex gap-2 flex-wrap">
+                          <button
+                            onClick={() => handleOpenModal(id)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-body text-xs py-1 px-3 rounded transition-colors"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => openObjectMapEditor(id)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-body text-xs py-1 px-3 rounded transition-colors"
+                            title="Configure seating map"
+                          >
+                            🎪 Map
+                          </button>
                         <button
                           onClick={() => setDeleteConfirmId(id)}
                           className="bg-red-600 hover:bg-red-700 text-white font-body text-xs py-1 px-3 rounded transition-colors"
@@ -772,7 +1144,8 @@ function DashboardPage() {
                       )}
                     </td>
                   </tr>
-                ))}
+                );
+                })}
               </tbody>
             </table>
           </div>
@@ -799,28 +1172,6 @@ function DashboardPage() {
                 </div>
 
                 <div>
-                  <label className="block text-gray-300 font-body text-sm mb-2">Price (€)</label>
-                  <input
-                    type="number"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-2 rounded font-body focus:outline-none focus:border-purple-500"
-                    placeholder="e.g., 1000"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-gray-300 font-body text-sm mb-2">Zones (comma-separated)</label>
-                  <textarea
-                    value={formData.zones}
-                    onChange={(e) => setFormData({ ...formData, zones: e.target.value })}
-                    className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-2 rounded font-body focus:outline-none focus:border-purple-500"
-                    placeholder="e.g., VIP - 1500€, Standard - 1000€, General - 800€"
-                    rows={3}
-                  />
-                </div>
-
-                <div>
                   <label className="block text-gray-300 font-body text-sm mb-2">Description</label>
                   <textarea
                     value={formData.description}
@@ -829,6 +1180,69 @@ function DashboardPage() {
                     placeholder="e.g., Ana Carla Maza Live"
                     rows={3}
                   />
+                </div>
+
+                {/* Ticket Types Management */}
+                <div className="bg-madverse-dark border border-gray-700 rounded-lg p-4">
+                  <label className="block text-gray-300 font-body text-sm mb-4 font-semibold">Ticket Types</label>
+                  <div className="space-y-3">
+                    {Object.entries(formData.ticketTypes).map(([key, type]) => (
+                      <div key={key} className="p-3 border border-gray-700 rounded bg-black/30">
+                        <div className="flex items-center gap-3 mb-3">
+                          <input
+                            type="checkbox"
+                            checked={type.enabled}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              ticketTypes: {
+                                ...formData.ticketTypes,
+                                [key]: { ...type, enabled: e.target.checked }
+                              }
+                            })}
+                            className="w-4 h-4 cursor-pointer"
+                          />
+                          <span className="text-white font-body font-semibold">{type.name}</span>
+                        </div>
+
+                        {type.enabled && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-gray-400 font-body text-xs mb-1 block">Price (€)</label>
+                              <input
+                                type="number"
+                                value={type.price}
+                                onChange={(e) => setFormData({
+                                  ...formData,
+                                  ticketTypes: {
+                                    ...formData.ticketTypes,
+                                    [key]: { ...type, price: e.target.value }
+                                  }
+                                })}
+                                className="w-full bg-madverse-dark border border-gray-600 text-white px-2 py-1 rounded text-sm font-body focus:outline-none focus:border-purple-500"
+                                placeholder="e.g., 500"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-gray-400 font-body text-xs mb-1 block">Stock</label>
+                              <input
+                                type="number"
+                                value={type.stock}
+                                onChange={(e) => setFormData({
+                                  ...formData,
+                                  ticketTypes: {
+                                    ...formData.ticketTypes,
+                                    [key]: { ...type, stock: e.target.value }
+                                  }
+                                })}
+                                className="w-full bg-madverse-dark border border-gray-600 text-white px-2 py-1 rounded text-sm font-body focus:outline-none focus:border-purple-500"
+                                placeholder="e.g., 20"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div>
@@ -862,6 +1276,149 @@ function DashboardPage() {
                 >
                   {editingEventId ? 'Update Event' : 'Create Event'}
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* OBJECT MAP Modal */}
+        {showObjectMapModal && selectedEventForMap && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className="bg-madverse-darker border border-gray-700 rounded-lg p-6 max-w-4xl w-full my-8">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold font-display text-white">🎪 OBJECT MAP - {events[selectedEventForMap]?.name}</h2>
+                <button onClick={() => setShowObjectMapModal(false)} className="text-gray-400 hover:text-white text-2xl">✕</button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Layout Type Selection */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-gray-300 font-body text-sm mb-2">Layout Type</label>
+                    <select
+                      value={mapLayoutType}
+                      onChange={(e) => setMapLayoutType(e.target.value)}
+                      className="w-full bg-madverse-dark border border-gray-600 text-white px-3 py-2 rounded font-body focus:outline-none focus:border-purple-500"
+                    >
+                      <option value="cinema">🎬 Cinema (Assigned Seats)</option>
+                      <option value="festival">🎪 Festival (Open Ground)</option>
+                      <option value="vip_section">VIP Sections</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-300 font-body text-sm mb-2">Rows</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={mapRows}
+                      onChange={(e) => regenerateGrid(parseInt(e.target.value), mapCols)}
+                      className="w-full bg-madverse-dark border border-gray-600 text-white px-3 py-2 rounded font-body focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-300 font-body text-sm mb-2">Columns</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="15"
+                      value={mapCols}
+                      onChange={(e) => regenerateGrid(mapRows, parseInt(e.target.value))}
+                      className="w-full bg-madverse-dark border border-gray-600 text-white px-3 py-2 rounded font-body focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Seat Type Selection */}
+                <div>
+                  <label className="block text-gray-300 font-body text-sm mb-3">🪑 Click seats to assign type (or click again to remove)</label>
+                  <div className="flex gap-3 flex-wrap">
+                    <button
+                      onClick={() => setSelectedSeatType('vip')}
+                      className={`px-4 py-2 rounded font-body font-semibold transition-colors ${selectedSeatType === 'vip' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+                    >
+                      VIP
+                    </button>
+                    <button
+                      onClick={() => setSelectedSeatType('standard')}
+                      className={`px-4 py-2 rounded font-body font-semibold transition-colors ${selectedSeatType === 'standard' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+                    >
+                      Standard
+                    </button>
+                    <button
+                      onClick={() => setSelectedSeatType('group')}
+                      className={`px-4 py-2 rounded font-body font-semibold transition-colors ${selectedSeatType === 'group' ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+                    >
+                      Group of 4
+                    </button>
+                  </div>
+                </div>
+
+                {/* Grid Editor */}
+                <div className="bg-madverse-dark rounded-lg p-6 border border-gray-700 overflow-x-auto">
+                  <div className="grid gap-2 inline-grid" style={{ gridTemplateColumns: `repeat(${mapCols}, minmax(40px, 1fr))`, rowGap: '8px', columnGap: '8px' }}>
+                    {mapSeats.map((seat) => {
+                      const seatColorMap = {
+                        vip: 'bg-purple-600 hover:bg-purple-700',
+                        standard: 'bg-blue-600 hover:bg-blue-700',
+                        group: 'bg-green-600 hover:bg-green-700',
+                        '': 'bg-gray-700 hover:bg-gray-600'
+                      };
+                      const color = seatColorMap[seat.type] || seatColorMap[''];
+                      
+                      return (
+                        <button
+                          key={seat.id}
+                          onClick={() => handleSeatClick(seat.id)}
+                          className={`w-10 h-10 rounded text-xs font-bold text-white transition-all ${color} flex items-center justify-center`}
+                          title={`Row ${seat.row + 1}, Seat ${String.fromCharCode(65 + seat.col)} - ${seat.type || 'Empty'}`}
+                        >
+                          {seat.type ? (seat.type === 'vip' ? '👑' : seat.type === 'standard' ? '🎫' : '👥') : ''}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Statistics */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-madverse-dark rounded-lg p-4 border border-gray-700">
+                  <div className="text-center">
+                    <p className="text-gray-400 font-body text-sm mb-1">Total Seats</p>
+                    <p className="text-xl font-bold font-display text-white">{mapSeats.length}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-gray-400 font-body text-sm mb-1">VIP Seats</p>
+                    <p className="text-xl font-bold font-display text-purple-400">{mapSeats.filter(s => s.type === 'vip').length}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-gray-400 font-body text-sm mb-1">Other Seats</p>
+                    <p className="text-xl font-bold font-display text-blue-400">{mapSeats.filter(s => s.type && s.type !== 'vip').length}</p>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => setShowObjectMapModal(false)}
+                    className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white font-body font-semibold rounded transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={clearObjectMap}
+                    className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-body font-semibold rounded transition-colors"
+                  >
+                    Clear Map
+                  </button>
+                  <button
+                    onClick={saveObjectMap}
+                    className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-body font-semibold rounded transition-colors"
+                  >
+                    Save Map
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -970,88 +1527,217 @@ function TicketsPage() {
   }
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Tickets</h1>
-      {error && <div style={{ color: 'red' }}>{error}</div>}
+    <div className="min-h-screen bg-madverse-dark p-4 sm:p-6 lg:p-8">
+      <h1 className="text-2xl sm:text-3xl font-bold text-white mb-6 font-display">Tickets</h1>
+      {error && <div className="text-red-400 bg-red-900/20 p-3 rounded mb-4 text-sm sm:text-base">{error}</div>}
 
-      <form onSubmit={handleCreate} style={{ marginBottom: 20 }}>
-        <h2>Create Ticket</h2>
-        <div>
-          <label>Title</label>
-          <input
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            required
-          />
+      <form onSubmit={handleCreate} className="bg-madverse-darker border border-gray-700 rounded-lg p-4 sm:p-6 mb-8">
+        <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 font-display">Create Ticket</h2>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-gray-300 font-body text-sm sm:text-base mb-2">Title</label>
+            <input
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              className="w-full bg-madverse-dark border border-gray-600 text-white px-3 py-2 rounded text-sm sm:text-base"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-gray-300 font-body text-sm sm:text-base mb-2">Description</label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              className="w-full bg-madverse-dark border border-gray-600 text-white px-3 py-2 rounded text-sm sm:text-base"
+              rows="4"
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-gray-300 font-body text-sm sm:text-base mb-2">Status</label>
+              <select value={status} onChange={e => setStatus(e.target.value)} className="w-full bg-madverse-dark border border-gray-600 text-white px-3 py-2 rounded text-sm sm:text-base">
+                <option>Open</option>
+                <option>In Progress</option>
+                <option>Closed</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-gray-300 font-body text-sm sm:text-base mb-2">Priority</label>
+              <select value={priority} onChange={e => setPriority(e.target.value)} className="w-full bg-madverse-dark border border-gray-600 text-white px-3 py-2 rounded text-sm sm:text-base">
+                <option>Low</option>
+                <option>Normal</option>
+                <option>High</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white font-body font-bold py-2 px-4 rounded text-sm sm:text-base mt-4">
+            Create
+          </button>
         </div>
-        <div>
-          <label>Description</label>
-          <textarea
-            value={description}
-            onChange={e => setDescription(e.target.value)}
-          />
-        </div>
-        <div>
-          <label>Status</label>
-          <select value={status} onChange={e => setStatus(e.target.value)}>
-            <option>Open</option>
-            <option>In Progress</option>
-            <option>Closed</option>
-          </select>
-        </div>
-        <div>
-          <label>Priority</label>
-          <select value={priority} onChange={e => setPriority(e.target.value)}>
-            <option>Low</option>
-            <option>Normal</option>
-            <option>High</option>
-          </select>
-        </div>
-        <button type="submit">Create</button>
       </form>
 
-      <h2>All Tickets</h2>
-      <table border="1" cellPadding="4" cellSpacing="0">
-        <thead>
-          <tr>
-            <th>Id</th>
-            <th>Title</th>
-            <th>Status</th>
-            <th>Priority</th>
-            <th>Created</th>
-          </tr>
-        </thead>
-        <tbody>
-          {tickets.map(t => (
-            <tr key={t.Id}>
-              <td>{t.Id}</td>
-              <td>{t.Title}</td>
-              <td>{t.Status}</td>
-              <td>{t.Priority}</td>
-              <td>{new Date(t.CreatedAt).toLocaleString()}</td>
+      <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 font-display">All Tickets</h2>
+      <div className="overflow-x-auto">
+        <table className="w-full border border-gray-700 text-sm sm:text-base">
+          <thead className="bg-madverse-dark">
+            <tr>
+              <th className="border border-gray-700 px-3 py-2 text-left text-gray-300 font-body">Id</th>
+              <th className="border border-gray-700 px-3 py-2 text-left text-gray-300 font-body">Title</th>
+              <th className="border border-gray-700 px-3 py-2 text-left text-gray-300 font-body">Status</th>
+              <th className="border border-gray-700 px-3 py-2 text-left text-gray-300 font-body">Priority</th>
+              <th className="border border-gray-700 px-3 py-2 text-left text-gray-300 font-body hidden sm:table-cell">Created</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {tickets.map(t => (
+              <tr key={t.Id} className="hover:bg-madverse-dark/50">
+                <td className="border border-gray-700 px-3 py-2 text-gray-300">{t.Id}</td>
+                <td className="border border-gray-700 px-3 py-2 text-gray-300">{t.Title}</td>
+                <td className="border border-gray-700 px-3 py-2 text-gray-300">{t.Status}</td>
+                <td className="border border-gray-700 px-3 py-2 text-gray-300">{t.Priority}</td>
+                <td className="border border-gray-700 px-3 py-2 text-gray-300 hidden sm:table-cell">{new Date(t.CreatedAt).toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
 function Layout({ children }) {
   const navigate = useNavigate();
+  const { user, logout: authLogout } = useAuth();
+  const [showProfile, setShowProfile] = useState(false);
+  const [profileData, setProfileData] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+
+  const loadUserProfile = async () => {
+    setLoadingProfile(true);
+    try {
+      const profileRes = await fetch(`${API_BASE}/auth/profile`, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`
+        }
+      });
+      if (profileRes.ok) {
+        const profileInfo = await profileRes.json();
+        setProfileData(profileInfo);
+      }
+
+      const ordersRes = await fetch(`${API_BASE}/auth/orders`, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`
+        }
+      });
+      if (ordersRes.ok) {
+        const ordersInfo = await ordersRes.json();
+        setOrders(ordersInfo.orders || []);
+      }
+    } catch (err) {
+      console.error('Error loading profile:', err);
+    }
+    setLoadingProfile(false);
+  };
+
+  const handleProfileClick = () => {
+    setShowProfile(!showProfile);
+    if (!showProfile && !profileData) {
+      loadUserProfile();
+    }
+  };
+
   function logout() {
-    setToken(null);
-    setIsAdminFlag(false);
-    navigate('/');
+    authLogout();
+    setShowProfile(false);
+    navigate('/login');
   }
+
   return (
     <div>
-      <nav style={{ padding: 10, borderBottom: '1px solid #ccc' }}>
-        <button onClick={() => navigate('/')}>Home</button>
-        <button onClick={() => navigate('/tickets')}>Tickets</button>
-        <button onClick={() => navigate('/checkout')}>Checkout</button>
-        <button onClick={() => navigate('/dashboard')}>Admin Dashboard</button>
-        <button onClick={logout} style={{ float: 'right' }}>Logout</button>
+      <nav className="bg-madverse-darker border-b border-gray-700 px-4 py-3 flex justify-between items-center overflow-x-auto">
+        <div className="flex items-center space-x-2 sm:space-x-4 md:space-x-6 text-xs sm:text-sm md:text-base">
+          <button onClick={() => navigate('/')} className="text-white font-bold hover:text-purple-400 whitespace-nowrap">Home</button>
+          <button onClick={() => navigate('/tickets')} className="text-white hover:text-purple-400 whitespace-nowrap">Tickets</button>
+          <button onClick={() => navigate('/checkout')} className="text-white hover:text-purple-400 whitespace-nowrap">Checkout</button>
+          {user?.isAdmin && (
+            <button onClick={() => navigate('/dashboard')} className="text-white hover:text-purple-400 whitespace-nowrap">Admin</button>
+          )}
+        </div>
+        <div className="flex items-center space-x-4 relative">
+          {user && (
+            <>
+              <button
+                onClick={handleProfileClick}
+                className="w-10 h-10 bg-purple-600 hover:bg-purple-700 text-white rounded-full flex items-center justify-center font-bold transition-colors"
+                title={user.email}
+              >
+                {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+              </button>
+              {showProfile && (
+                <div className="absolute right-0 top-12 bg-madverse-darker border border-gray-700 rounded-lg shadow-lg w-full sm:w-96 md:w-80 z-50 max-w-xs">
+                  <div className="p-4 border-b border-gray-700">
+                    {loadingProfile ? (
+                      <p className="text-gray-400 text-sm">Loading...</p>
+                    ) : profileData ? (
+                      <>
+                        <div className="flex items-center space-x-3 mb-3">
+                          <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                            {profileData.firstName.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-white font-semibold">{profileData.name}</p>
+                            <p className="text-gray-400 text-sm">{profileData.email}</p>
+                          </div>
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
+
+                  <div className="max-h-64 overflow-y-auto">
+                    <div className="p-4">
+                      <h3 className="text-white font-semibold mb-3">🎟️ Your Tickets</h3>
+                      {orders.length === 0 ? (
+                        <p className="text-gray-400 text-sm">No tickets purchased yet</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {orders.map((order) => (
+                            <div key={order.orderId} className="bg-madverse-dark rounded p-3 border border-gray-600">
+                              <p className="text-purple-400 text-sm font-semibold">Order #{order.orderId}</p>
+                              <p className="text-gray-400 text-xs mb-2">{new Date(order.orderDate).toLocaleDateString()}</p>
+                              <div className="space-y-1">
+                                {order.tickets.map((ticket, idx) => (
+                                  <div key={idx} className="text-sm">
+                                    <p className="text-white">{ticket.eventTitle}</p>
+                                    <p className="text-gray-400 text-xs">Qty: {ticket.quantity} × €{ticket.unitPrice}</p>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="  border-t border-gray-600 mt-2 pt-2">
+                                <p className="text-white font-semibold text-sm">Total: €{order.totalAmount}</p>
+                                <p className="text-xs capitalize" style={{color: order.status === 'Confirmed' ? '#10b981' : '#f59e0b'}}>{order.status}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-3 border-t border-gray-700">
+                    <button
+                      onClick={logout}
+                      className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded text-sm font-semibold transition-colors"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </nav>
       {children}
     </div>
@@ -1060,18 +1746,57 @@ function Layout({ children }) {
 
 function LandingPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { basket } = useBasket();
-  const [darkMode, setDarkMode] = useState(true);
+  const { user, logout: authLogout } = useAuth();
 
-  useEffect(() => {
-    if (darkMode) {
-      document.body.classList.add('bg-madverse-dark', 'text-white');
-      document.body.classList.remove('bg-white', 'text-gray-900');
-    } else {
-      document.body.classList.remove('bg-madverse-dark', 'text-white');
-      document.body.classList.add('bg-white', 'text-gray-900');
+  const [showProfile, setShowProfile] = useState(false);
+  const [profileData, setProfileData] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+
+  const loadUserProfile = async () => {
+    setLoadingProfile(true);
+    try {
+      const profileRes = await fetch(`${API_BASE}/auth/profile`, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`
+        }
+      });
+      if (profileRes.ok) {
+        const profileInfo = await profileRes.json();
+        setProfileData(profileInfo);
+      }
+
+      const ordersRes = await fetch(`${API_BASE}/auth/orders`, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`
+        }
+      });
+      if (ordersRes.ok) {
+        const ordersInfo = await ordersRes.json();
+        setOrders(ordersInfo.orders || []);
+      }
+    } catch (err) {
+      console.error('Error loading profile:', err);
     }
-  }, [darkMode]);
+    setLoadingProfile(false);
+  };
+
+  const handleProfileClick = () => {
+    setShowProfile(!showProfile);
+    if (!showProfile && !profileData) {
+      loadUserProfile();
+    }
+  };
+
+  const handleLogout = () => {
+    authLogout();
+    setShowProfile(false);
+    navigate('/login');
+  };
+
+
 
   return (
     <>
@@ -1079,19 +1804,22 @@ function LandingPage() {
       <header className="bg-madverse-darker border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
+            <div className="flex items-center cursor-pointer" onClick={() => navigate('/')}>
               <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center mr-3">
                 <span className="text-black font-bold text-sm">M</span>
               </div>
               <span className="text-white font-bold text-xl font-festival tracking-wider">MADVERSE</span>
             </div>
             <nav className="hidden md:flex space-x-8">
+              <button className={`text-sm uppercase font-body font-semibold transition-colors ${location.pathname === '/' ? 'text-purple-400' : 'text-white hover:text-purple-400'}`} onClick={() => navigate('/')}>Home</button>
               <div className="dropdown-container">
-                <button className="text-sm uppercase font-body font-semibold" onClick={() => navigate('/events')}>Events</button>
+                <button className={`text-sm uppercase font-body font-semibold transition-colors ${location.pathname === '/events' ? 'text-purple-400' : 'text-white hover:text-purple-400'}`} onClick={() => navigate('/events')}>Events</button>
                 <div className="dropdown-menu"></div>
               </div>
+              <button className={`text-sm uppercase font-body font-semibold transition-colors ${location.pathname === '/partners' ? 'text-purple-400' : 'text-white hover:text-purple-400'}`} onClick={() => navigate('/partners')}>Partners</button>
+              <button className={`text-sm uppercase font-body font-semibold transition-colors ${location.pathname === '/contact' ? 'text-purple-400' : 'text-white hover:text-purple-400'}`} onClick={() => navigate('/contact')}>Contact</button>
             </nav>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4 relative">
               <button
                 type="button"
                 onClick={() => navigate('/checkout')}
@@ -1099,34 +1827,106 @@ function LandingPage() {
               >
                 🛒 {basket.length > 0 && <span className="absolute -top-2 -right-2 bg-purple-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{basket.length}</span>}
               </button>
-              <button
-                type="button"
-                onClick={() => navigate('/dashboard')}
-                className="text-sm uppercase font-body font-semibold border border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white px-3 py-1 rounded transition-colors"
-              >
-                Admin Dashboard
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/login')}
-                className="text-sm uppercase font-body font-semibold border border-white text-white hover:bg-white hover:text-madverse-dark px-3 py-1 rounded transition-colors"
-              >
-                Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/register')}
-                className="text-sm uppercase font-body font-semibold bg-purple-600 text-white hover:bg-purple-700 px-3 py-1 rounded transition-colors"
-              >
-                Register
-              </button>
-              <button
-                type="button"
-                onClick={() => setDarkMode(v => !v)}
-                className="text-sm uppercase font-body font-semibold border border-gray-500 px-3 py-1 rounded"
-              >
-                {darkMode ? 'Light Mode' : 'Dark Mode'}
-              </button>
+              {user?.isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/dashboard')}
+                  className="text-sm uppercase font-body font-semibold border border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white px-3 py-1 rounded transition-colors"
+                >
+                  Admin Dashboard
+                </button>
+              )}
+              
+              {user ? (
+                <>
+                  <button
+                    onClick={handleProfileClick}
+                    className="w-10 h-10 bg-purple-600 hover:bg-purple-700 text-white rounded-full flex items-center justify-center font-bold transition-colors"
+                    title={user.email}
+                  >
+                    {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  </button>
+                  {showProfile && (
+                    <div className="absolute right-0 top-12 bg-madverse-darker border border-gray-700 rounded-lg shadow-lg w-full sm:w-96 md:w-80 z-50 max-w-xs">
+                      <div className="p-4 border-b border-gray-700">
+                        {loadingProfile ? (
+                          <p className="text-gray-400 text-sm">Loading...</p>
+                        ) : profileData ? (
+                          <>
+                            <div className="flex items-center space-x-3 mb-3">
+                              <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                                {profileData.firstName.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="text-white font-semibold">{profileData.name}</p>
+                                <p className="text-gray-400 text-sm">{profileData.email}</p>
+                              </div>
+                            </div>
+                          </>
+                        ) : null}
+                      </div>
+
+                      <div className="max-h-64 overflow-y-auto">
+                        <div className="p-4">
+                          <h3 className="text-white font-semibold mb-3">🎟️ Your Tickets</h3>
+                          {orders.length === 0 ? (
+                            <p className="text-gray-400 text-sm">No tickets purchased yet</p>
+                          ) : (
+                            <div className="space-y-3">
+                              {orders.map((order) => (
+                                <div key={order.orderId} className="bg-madverse-dark rounded p-3 border border-gray-600">
+                                  <p className="text-purple-400 text-sm font-semibold">Order #{order.orderId}</p>
+                                  <p className="text-gray-400 text-xs mb-2">{new Date(order.orderDate).toLocaleDateString()}</p>
+                                  <div className="space-y-1">
+                                    {order.tickets.map((ticket, idx) => (
+                                      <div key={idx} className="text-sm">
+                                        <p className="text-white">{ticket.eventTitle}</p>
+                                        <p className="text-gray-400 text-xs">Qty: {ticket.quantity} × €{ticket.unitPrice}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <div className="border-t border-gray-600 mt-2 pt-2">
+                                    <p className="text-white font-semibold text-sm">Total: €{order.totalAmount}</p>
+                                    <p className="text-xs capitalize" style={{color: order.status === 'Confirmed' ? '#10b981' : '#f59e0b'}}>{order.status}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="p-3 border-t border-gray-700">
+                        <button
+                          onClick={handleLogout}
+                          className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded text-sm font-semibold transition-colors"
+                        >
+                          Logout
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/login')}
+                    className="text-sm uppercase font-body font-semibold border border-white text-white hover:bg-white hover:text-madverse-dark px-3 py-1 rounded transition-colors"
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/register')}
+                    className="text-sm uppercase font-body font-semibold bg-purple-600 text-white hover:bg-purple-700 px-3 py-1 rounded transition-colors"
+                  >
+                    Register
+                  </button>
+                </>
+              )}
+
+
             </div>
           </div>
         </div>
@@ -1161,9 +1961,7 @@ function LandingPage() {
               >
                 <span>GET TICKETS</span>
               </button>
-              <button className="px-8 py-3 border border-white text-white hover:bg-white hover:text-madverse-dark transition-colors duration-300 rounded flex items-center justify-center space-x-2 font-body font-semibold tracking-wide">
-                <span>WATCH AFTERMOVIE</span>
-              </button>
+
             </div>
           </div>
         </div>
@@ -1171,18 +1969,7 @@ function LandingPage() {
 
 
 
-      {/* Fixed Radio */}
-      <div className="fixed bottom-4 left-4 bg-madverse-darker rounded-full px-4 py-3 flex items-center space-x-4 shadow-lg">
-        <div className="flex items-center space-x-2">
-          <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-            <span className="text-madverse-dark font-bold text-sm">M</span>
-          </div>
-          <div className="text-xs">
-            <div className="font-bold font-festival tracking-wider">MADVERSE</div>
-            <div className="font-body font-semibold">RADIO</div>
-          </div>
-        </div>
-      </div>
+
 
       {/* Footer */}
       <footer className="mt-16 border-t border-gray-700 py-6 text-center text-sm text-gray-400">
@@ -1251,12 +2038,12 @@ function CheckoutPage() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
               {/* Order Items */}
               <div className="lg:col-span-2">
                 <div className="bg-madverse-darker border border-gray-700 rounded-lg overflow-hidden">
-                  <div className="px-6 py-4 border-b border-gray-700 bg-madverse-dark">
-                    <h2 className="text-xl font-bold font-display text-white">Order Summary</h2>
+                  <div className="px-4 sm:px-6 py-4 border-b border-gray-700 bg-madverse-dark">
+                    <h2 className="text-lg sm:text-xl font-bold font-display text-white">Order Summary</h2>
                   </div>
 
                   <div className="divide-y divide-gray-700">
@@ -1266,13 +2053,13 @@ function CheckoutPage() {
                           <div className="flex-1">
                             <h3 className="text-lg font-bold font-display text-white mb-2">{item.eventName}</h3>
                             <div className="space-y-1">
-                              <p className="text-gray-400 font-body text-sm">Zone: <span className="text-purple-400 font-semibold">{item.zone}</span></p>
+                              <p className="text-gray-400 font-body text-sm">Type: <span className="text-purple-400 font-semibold">{item.ticketTypeName || item.ticketType}</span></p>
                               <p className="text-gray-400 font-body text-sm">Quantity: <span className="text-purple-400 font-semibold">×{item.quantity}</span></p>
-                              <p className="text-gray-400 font-body text-sm">Price per ticket: <span className="text-yellow-400 font-semibold">EUR {item.price}</span></p>
+                              <p className="text-gray-400 font-body text-sm">Price per ticket: <span className="text-yellow-400 font-semibold">€{item.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-2xl font-bold font-display text-yellow-400 mb-4">EUR {item.total}</p>
+                            <p className="text-2xl font-bold font-display text-yellow-400 mb-4">€{item.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                             <button
                               onClick={() => removeFromBasket(idx)}
                               className="text-red-400 hover:text-red-300 font-body text-sm font-semibold"
@@ -1303,15 +2090,15 @@ function CheckoutPage() {
                   <div className="space-y-4 mb-6">
                     <div className="flex justify-between">
                       <span className="text-gray-400 font-body">Subtotal</span>
-                      <span className="text-white font-semibold">EUR {total}</span>
+                      <span className="text-white font-semibold">€{total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400 font-body">Fees</span>
-                      <span className="text-white font-semibold">EUR 0</span>
+                      <span className="text-white font-semibold">€0.00</span>
                     </div>
                     <div className="border-t border-gray-700 pt-4 flex justify-between">
                       <span className="text-white font-bold">Total</span>
-                      <span className="text-yellow-400 font-bold font-display text-2xl">EUR {total}</span>
+                      <span className="text-yellow-400 font-bold font-display text-2xl">€{total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   </div>
 
@@ -1347,6 +2134,52 @@ function EventsPage() {
   const navigate = useNavigate();
   const { basket } = useBasket();
   const { events } = useEvents();
+  const { user, logout: authLogout } = useAuth();
+  const [showProfile, setShowProfile] = useState(false);
+  const [profileData, setProfileData] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+
+  const loadUserProfile = async () => {
+    setLoadingProfile(true);
+    try {
+      const profileRes = await fetch(`${API_BASE}/auth/profile`, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`
+        }
+      });
+      if (profileRes.ok) {
+        const profileInfo = await profileRes.json();
+        setProfileData(profileInfo);
+      }
+
+      const ordersRes = await fetch(`${API_BASE}/auth/orders`, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`
+        }
+      });
+      if (ordersRes.ok) {
+        const ordersInfo = await ordersRes.json();
+        setOrders(ordersInfo.orders || []);
+      }
+    } catch (err) {
+      console.error('Error loading profile:', err);
+    }
+    setLoadingProfile(false);
+  };
+
+  const handleProfileClick = () => {
+    setShowProfile(!showProfile);
+    if (!showProfile && !profileData) {
+      loadUserProfile();
+    }
+  };
+
+  const handleLogout = () => {
+    authLogout();
+    setShowProfile(false);
+    navigate('/login');
+  };
 
   // Display mapping for events (gradient images and display info)
   const displayMapping = {
@@ -1380,7 +2213,7 @@ function EventsPage() {
               </div>
               <span className="text-white font-bold text-xl font-festival tracking-wider">MADVERSE</span>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4 relative">
               <button
                 type="button"
                 onClick={() => navigate('/checkout')}
@@ -1388,6 +2221,24 @@ function EventsPage() {
               >
                 🛒 {basket.length > 0 && <span className="absolute -top-2 -right-2 bg-purple-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{basket.length}</span>}
               </button>
+              {user?.isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/dashboard')}
+                  className="text-sm uppercase font-body font-semibold border border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white px-3 py-1 rounded transition-colors"
+                >
+                  Admin Dashboard
+                </button>
+              )}
+              {user && (
+                <button
+                  onClick={handleProfileClick}
+                  className="w-10 h-10 bg-purple-600 hover:bg-purple-700 text-white rounded-full flex items-center justify-center font-bold transition-colors"
+                  title={user.email}
+                >
+                  {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => navigate('/')}
@@ -1395,6 +2246,74 @@ function EventsPage() {
               >
                 Home
               </button>
+              <button
+                type="button"
+                onClick={() => navigate('/contact')}
+                className="text-sm uppercase font-body font-semibold border border-white px-3 py-1 rounded hover:bg-white hover:text-madverse-dark transition-colors"
+              >
+                Contact
+              </button>
+
+              {showProfile && (
+                <div className="absolute right-0 top-12 bg-madverse-darker border border-gray-700 rounded-lg shadow-lg w-full sm:w-96 md:w-80 z-50 max-w-xs">
+                  <div className="p-4 border-b border-gray-700">
+                    {loadingProfile ? (
+                      <p className="text-gray-400 text-sm">Loading...</p>
+                    ) : profileData ? (
+                      <>
+                        <div className="flex items-center space-x-3 mb-3">
+                          <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                            {profileData.firstName.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-white font-semibold">{profileData.name}</p>
+                            <p className="text-gray-400 text-sm">{profileData.email}</p>
+                          </div>
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
+
+                  <div className="max-h-64 overflow-y-auto">
+                    <div className="p-4">
+                      <h3 className="text-white font-semibold mb-3">🎟️ Your Tickets</h3>
+                      {orders.length === 0 ? (
+                        <p className="text-gray-400 text-sm">No tickets purchased yet</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {orders.map((order) => (
+                            <div key={order.orderId} className="bg-madverse-dark rounded p-3 border border-gray-600">
+                              <p className="text-purple-400 text-sm font-semibold">Order #{order.orderId}</p>
+                              <p className="text-gray-400 text-xs mb-2">{new Date(order.orderDate).toLocaleDateString()}</p>
+                              <div className="space-y-1">
+                                {order.tickets.map((ticket, idx) => (
+                                  <div key={idx} className="text-sm">
+                                    <p className="text-white">{ticket.eventTitle}</p>
+                                    <p className="text-gray-400 text-xs">Qty: {ticket.quantity} × €{ticket.unitPrice}</p>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="border-t border-gray-600 mt-2 pt-2">
+                                <p className="text-white font-semibold text-sm">Total: €{order.totalAmount}</p>
+                                <p className="text-xs capitalize" style={{color: order.status === 'Confirmed' ? '#10b981' : '#f59e0b'}}>{order.status}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-3 border-t border-gray-700">
+                    <button
+                      onClick={handleLogout}
+                      className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded text-sm font-semibold transition-colors"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1418,37 +2337,37 @@ function EventsPage() {
               <div key={id} className="bg-madverse-darker rounded-lg overflow-hidden border border-gray-700 group">
                 {/* Event Image */}
                 {event.image ? (
-                  <div className="h-32 w-full relative overflow-hidden">
+                  <div className="h-24 sm:h-32 w-full relative overflow-hidden">
                     <img src={event.image} alt={event.name} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center p-2">
                       <div className="text-center">
-                        <div className="text-white font-display text-xl font-bold">{event.name}</div>
+                        <div className="text-white font-display text-sm sm:text-xl font-bold line-clamp-2">{event.name}</div>
                         <div className="text-gray-300 font-body text-xs uppercase tracking-wider">{display.day}</div>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className={`h-32 w-full ${display.image} flex items-center justify-center relative overflow-hidden`}>
+                  <div className={`h-24 sm:h-32 w-full ${display.image} flex items-center justify-center relative overflow-hidden p-2`}>
                     <div className="absolute inset-0 bg-black/30" />
                     <div className="relative z-10 text-center">
-                      <div className="text-white font-display text-xl font-bold">{event.name}</div>
+                      <div className="text-white font-display text-sm sm:text-xl font-bold line-clamp-2">{event.name}</div>
                       <div className="text-gray-300 font-body text-xs uppercase tracking-wider">{display.day}</div>
                     </div>
                   </div>
                 )}
 
                 {/* Event Info */}
-                <div className="p-4">
-                  <p className="text-gray-400 font-body text-xs mb-3">{display.date}</p>
+                <div className="p-3 sm:p-4">
+                  <p className="text-gray-400 font-body text-xs mb-3 line-clamp-2">{display.date}</p>
                   
                   <div className="flex justify-between items-center mb-4">
-                    <span className="text-white font-body font-semibold text-sm">FROM €{event.price}</span>
+                    <span className="text-white font-body font-semibold text-xs sm:text-sm">FROM €{event.price}</span>
                   </div>
 
                   <button
                     type="button"
                     onClick={() => navigate(`/event/${id}`)}
-                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-body font-bold text-sm py-2 rounded transition-colors uppercase tracking-wide"
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-body font-bold text-xs sm:text-sm py-2 rounded transition-colors uppercase tracking-wide"
                   >
                     BUY TICKETS
                   </button>
@@ -1466,19 +2385,24 @@ function EventsPage() {
 function EventDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { user } = useAuth();
   const eventId = parseInt(id);
   const { basket, addToBasket } = useBasket();
-  const { events } = useEvents();
+  const { events, updateEvent } = useEvents();
   
-  const [selectedZone, setSelectedZone] = useState('General');
+  const [selectedTicketType, setSelectedTicketType] = useState(null);
   const [quantity, setQuantity] = useState(1);
+  const [message, setMessage] = useState('');
+  const [selectedSeat, setSelectedSeat] = useState(null); // For cinema seating
 
   const event = events[eventId];
 
-  // Set initial zone when event loads
+  // Set initial ticket type when event loads
   useEffect(() => {
-    if (event && event.zones.length > 0) {
-      setSelectedZone(event.zones[0]);
+    if (event && event.ticketTypes) {
+      const firstType = Object.keys(event.ticketTypes)[0];
+      setSelectedTicketType(firstType);
+      setMessage('');
     }
   }, [eventId, event]);
 
@@ -1499,16 +2423,52 @@ function EventDetailPage() {
   }
 
   const handleAddToBasket = () => {
+    if (!selectedTicketType) {
+      setMessage('❌ Please select a ticket type');
+      return;
+    }
+
+    // Check if seat selection is required (cinema type)
+    const hasSeatingLayout = event.seatingLayout?.enabled && event.seatingLayout?.type === 'cinema';
+    if (hasSeatingLayout && !selectedSeat) {
+      setMessage('❌ Please select a seat first');
+      return;
+    }
+
+    const ticketTypeData = event.ticketTypes[selectedTicketType];
+    
+    if (!ticketTypeData) {
+      setMessage('❌ Invalid ticket type');
+      return;
+    }
+
+    if (ticketTypeData.available < quantity) {
+      setMessage(`❌ Only ${ticketTypeData.available} tickets available`);
+      return;
+    }
+
+    // Deduct from stock
+    const updatedEvent = { ...event };
+    updatedEvent.ticketTypes[selectedTicketType].available -= quantity;
+    
+    // Update events
+    updateEvent(eventId, updatedEvent);
+
+    // Add to basket
     addToBasket({ 
       eventId,
       eventName: event.name, 
-      zone: selectedZone, 
+      ticketType: selectedTicketType, // Store the key (vip, group, standard), not the name
+      ticketTypeName: ticketTypeData.name, // Store the display name for checkout
       quantity, 
-      price: event.price,
-      total: event.price * quantity
+      price: ticketTypeData.price,
+      total: ticketTypeData.price * quantity,
+      selectedSeat: selectedSeat ? { id: selectedSeat.id, row: selectedSeat.row, col: selectedSeat.col } : null // Add seat info
     });
+    
     setQuantity(1);
-    // Optional: Show success message or navigate to checkout
+    setMessage('✅ Added to basket!');
+    setTimeout(() => setMessage(''), 3000);
   };
 
   const basketTotal = basket.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -1540,6 +2500,14 @@ function EventDetailPage() {
             >
               🛒 {basket.length > 0 && <span className="absolute -top-2 -right-2 bg-purple-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{basket.length}</span>}
             </button>
+            {user?.isAdmin && (
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="text-sm uppercase font-body font-semibold border border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white px-3 py-1 rounded transition-colors"
+              >
+                Admin Dashboard
+              </button>
+            )}
             <button
               onClick={() => navigate('/')}
               className="text-sm uppercase font-body font-semibold border border-white px-3 py-1 rounded hover:bg-white hover:text-madverse-dark transition-colors"
@@ -1571,30 +2539,48 @@ function EventDetailPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {/* Left Column - Selection */}
             <div className="lg:col-span-2">
               {/* SELECT Section */}
-              <div className="bg-madverse-darker border border-gray-700 rounded-lg p-8 mb-8">
-                <h2 className="text-2xl font-bold font-display text-white mb-6">SELECT:</h2>
+              <div className="bg-madverse-darker border border-gray-700 rounded-lg p-4 sm:p-8 mb-6 sm:mb-8">
+                <h2 className="text-xl sm:text-2xl font-bold font-display text-white mb-4 sm:mb-6">SELECT TICKET TYPE:</h2>
 
-                {/* Select Zone */}
-                <div className="mb-6">
-                  <label className="text-gray-300 font-body text-sm mb-2 block">Select zone</label>
-                  <select
-                    value={selectedZone}
-                    onChange={(e) => setSelectedZone(e.target.value)}
-                    className="w-full bg-madverse-dark border border-gray-700 text-white font-body p-3 rounded cursor-pointer hover:border-purple-500 transition-colors"
-                  >
-                    {event.zones.map((zone, idx) => (
-                      <option key={idx} value={zone}>{zone}</option>
-                    ))}
-                  </select>
+                {message && (
+                  <div className={`mb-6 p-4 rounded-lg text-center font-body font-semibold text-sm sm:text-base ${message.includes('✅') ? 'bg-green-900/30 text-green-400 border border-green-600' : 'bg-red-900/30 text-red-400 border border-red-600'}`}>
+                    {message}
+                  </div>
+                )}
+
+                {/* Ticket Types Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                  {event.ticketTypes && Object.entries(event.ticketTypes).map(([typeKey, typeData]) => (
+                    <button
+                      key={typeKey}
+                      onClick={() => setSelectedTicketType(typeKey)}
+                      className={`p-5 rounded-lg border-2 transition-all text-left ${
+                        selectedTicketType === typeKey
+                          ? 'border-purple-500 bg-purple-900/30 shadow-lg shadow-purple-500/20'
+                          : 'border-gray-700 bg-madverse-dark hover:border-purple-400'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="text-white font-bold text-lg font-display">{typeData.name}</h3>
+                          <p className="text-gray-400 font-body text-sm">Stock: <span className={typeData.available > 0 ? 'text-green-400' : 'text-red-400'}>{typeData.available}/{typeData.stock}</span></p>
+                        </div>
+                        <span className="text-yellow-400 font-bold text-lg">€{typeData.price}</span>
+                      </div>
+                      {typeData.available === 0 && (
+                        <p className="text-red-400 text-xs font-semibold">OUT OF STOCK</p>
+                      )}
+                    </button>
+                  ))}
                 </div>
 
                 {/* Number of Tickets */}
-                <div className="mb-6">
-                  <label className="text-gray-300 font-body text-sm mb-3 block">Select number of tickets you want to order</label>
+                <div className="mb-6 bg-madverse-dark p-4 rounded-lg">
+                  <label className="text-gray-300 font-body text-sm mb-3 block">Select number of tickets:</label>
                   <div className="flex items-center gap-4">
                     <button
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -1604,7 +2590,10 @@ function EventDetailPage() {
                     </button>
                     <span className="text-white font-display text-2xl w-8 text-center">{quantity}</span>
                     <button
-                      onClick={() => setQuantity(quantity + 1)}
+                      onClick={() => {
+                        const maxAvailable = selectedTicketType ? event.ticketTypes[selectedTicketType].available : 100;
+                        setQuantity(Math.min(maxAvailable, quantity + 1));
+                      }}
                       className="bg-purple-600 hover:bg-purple-700 text-white w-10 h-10 rounded flex items-center justify-center font-bold transition-colors"
                     >
                       +
@@ -1612,17 +2601,77 @@ function EventDetailPage() {
                   </div>
                 </div>
 
+                {/* OBJECT MAP - Seating Selection (Cinema only) */}
+                {event.seatingLayout?.enabled && event.seatingLayout?.type === 'cinema' && (
+                  <div className="mb-6 bg-madverse-dark p-4 rounded-lg border border-emerald-600/50">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-white font-bold font-display text-lg">🪑 Select Your Seat</h3>
+                      {selectedSeat && (
+                        <button
+                          onClick={() => setSelectedSeat(null)}
+                          className="text-xs bg-red-600/30 hover:bg-red-600/50 text-red-300 px-2 py-1 rounded transition-colors"
+                        >
+                          Clear Selection
+                        </button>
+                      )}
+                    </div>
+
+                    {selectedSeat && (
+                      <div className="mb-4 p-3 bg-emerald-900/30 border border-emerald-600 rounded text-center">
+                        <p className="text-emerald-400 font-body text-sm">
+                          ✓ Selected: Row {selectedSeat.row + 1}, Seat {String.fromCharCode(65 + selectedSeat.col)} ({event.seatingLayout.seats.find(s => s.id === selectedSeat.id)?.type === 'vip' ? '👑 VIP' : '🎫 Standard'})
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="bg-madverse-darker rounded-lg p-4 border border-gray-700 overflow-x-auto flex justify-center">
+                      <div className="grid gap-2 inline-grid" style={{ gridTemplateColumns: `repeat(${event.seatingLayout?.cols || 8}, minmax(35px, 1fr))`, rowGap: '6px', columnGap: '6px' }}>
+                        {event.seatingLayout?.seats?.map((seat) => {
+                          if (seat.type !== selectedTicketType) return null; // Only show seats for selected ticket type
+                          
+                          const isSelected = selectedSeat?.id === seat.id;
+                          const seatColor = isSelected 
+                            ? 'bg-yellow-500 hover:bg-yellow-600 ring-2 ring-yellow-400' 
+                            : seat.type === 'vip'
+                            ? 'bg-purple-600 hover:bg-purple-700'
+                            : seat.type === 'standard'
+                            ? 'bg-blue-600 hover:bg-blue-700'
+                            : 'bg-green-600 hover:bg-green-700';
+                          
+                          return (
+                            <button
+                              key={seat.id}
+                              onClick={() => setSelectedSeat(isSelected ? null : seat)}
+                              className={`w-8 h-8 sm:w-9 sm:h-9 rounded text-xs font-bold text-white transition-all ${seatColor}`}
+                              title={`Row ${seat.row + 1}, Seat ${String.fromCharCode(65 + seat.col)}`}
+                            >
+                              {seat.type === 'vip' ? '👑' : '🎫'}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="mt-3 text-xs text-gray-400 font-body text-center">
+                      Click a seat to select it. Available seats for {event.ticketTypes[selectedTicketType]?.name}
+                    </div>
+                  </div>
+                )}
+
                 {/* Price and SELECT Button */}
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center bg-gradient-to-r from-purple-900/30 to-blue-900/30 p-4 rounded-lg border border-purple-600/30">
                   <div>
-                    <p className="text-gray-400 font-body text-xs mb-1">Ticket price:</p>
-                    <p className="text-white font-display text-lg font-bold">EUR {event.price}</p>
+                    <p className="text-gray-400 font-body text-sm mb-1">Total price:</p>
+                    <p className="text-white font-display text-2xl font-bold">
+                      €{selectedTicketType && event.ticketTypes[selectedTicketType] ? (event.ticketTypes[selectedTicketType].price * quantity).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                    </p>
                   </div>
                   <button
                     onClick={handleAddToBasket}
-                    className="bg-purple-600 hover:bg-purple-700 text-white font-body font-bold px-8 py-3 rounded uppercase tracking-wide transition-colors"
+                    disabled={!selectedTicketType || event.ticketTypes[selectedTicketType]?.available === 0}
+                    className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-body font-bold px-12 py-4 rounded-lg uppercase tracking-wide transition-colors text-lg"
                   >
-                    SELECT
+                    ADD TO BASKET
                   </button>
                 </div>
               </div>
@@ -1661,10 +2710,11 @@ function EventDetailPage() {
                     <div className="space-y-4 mb-6 max-h-64 overflow-y-auto">
                       {basket.map((item, idx) => (
                         <div key={idx} className="bg-madverse-dark p-3 rounded border border-gray-700">
-                          <p className="text-gray-300 font-body text-xs">{item.zone}</p>
+                          <p className="text-gray-300 font-body text-xs font-semibold">{item.ticketTypeName || item.ticketType}</p>
+                          <p className="text-gray-500 font-body text-xs mb-2">{item.eventName}</p>
                           <div className="flex justify-between mt-2">
                             <span className="text-purple-400 font-body text-sm">×{item.quantity}</span>
-                            <span className="text-yellow-400 font-bold font-body">EUR {item.price * item.quantity}</span>
+                            <span className="text-yellow-400 font-bold font-body">€{(item.price * item.quantity).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           </div>
                         </div>
                       ))}
@@ -1673,7 +2723,7 @@ function EventDetailPage() {
                     <div className="border-t border-gray-700 pt-4">
                       <div className="flex justify-between mb-4">
                         <span className="text-gray-300 font-body">Total:</span>
-                        <span className="text-yellow-400 font-bold font-display text-lg">EUR {basketTotal}</span>
+                        <span className="text-yellow-400 font-bold font-display text-lg">€{basketTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
                       <button 
                         onClick={() => navigate('/checkout')}
@@ -1692,13 +2742,344 @@ function EventDetailPage() {
   );
 }
 
+function OurPartnersPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { basket } = useBasket();
+  const { user, logout: authLogout } = useAuth();
+
+  const [showProfile, setShowProfile] = useState(false);
+  const [profileData, setProfileData] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+
+  const loadUserProfile = async () => {
+    setLoadingProfile(true);
+    try {
+      const profileRes = await fetch(`${API_BASE}/auth/profile`, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`
+        }
+      });
+      if (profileRes.ok) {
+        const profileInfo = await profileRes.json();
+        setProfileData(profileInfo);
+      }
+
+      const ordersRes = await fetch(`${API_BASE}/auth/orders`, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`
+        }
+      });
+      if (ordersRes.ok) {
+        const ordersInfo = await ordersRes.json();
+        setOrders(ordersInfo.orders || []);
+      }
+    } catch (err) {
+      console.error('Error loading profile:', err);
+    }
+    setLoadingProfile(false);
+  };
+
+  const handleProfileClick = () => {
+    setShowProfile(!showProfile);
+    if (!showProfile && !profileData) {
+      loadUserProfile();
+    }
+  };
+
+  const handleLogout = () => {
+    authLogout();
+    setShowProfile(false);
+    navigate('/login');
+  };
+
+  // Create 25 sponsor boxes (5x5 grid)
+  const sponsors = Array.from({ length: 25 }, (_, i) => ({
+    id: i + 1,
+    name: `Sponsor ${i + 1}`
+  }));
+
+  return (
+    <>
+      {/* Back Button Section */}
+      <section className="bg-yellow-400 pt-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <button
+            onClick={() => navigate('/')}
+            className="text-gray-900 hover:text-gray-700 transition-colors"
+            title="Go to Home"
+          >
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+        </div>
+      </section>
+
+      {/* Text Section */}
+      <section className="bg-yellow-400 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto text-center">
+          <h1 className="text-5xl md:text-6xl font-bold mb-4 font-display tracking-tight text-gray-900">
+            Our Partners
+          </h1>
+          <p className="text-xl text-gray-700 font-body">
+            We're proud to work with these amazing sponsors and partners
+          </p>
+        </div>
+      </section>
+
+      {/* Sponsors Grid Section */}
+      <section className="bg-yellow-400 pb-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          {/* 5x5 Grid for Sponsors */}
+          <div className="grid grid-cols-5 gap-0 border border-black bg-yellow-400">
+            {sponsors.map((sponsor) => (
+              <div
+                key={sponsor.id}
+                className="aspect-square bg-yellow-400 border border-black flex items-center justify-center hover:shadow-lg transition-shadow duration-300 overflow-hidden group"
+              >
+                <div className="w-full h-full flex items-center justify-center p-6">
+                  <img
+                    src=""
+                    alt={sponsor.name}
+                    className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+                {/* Placeholder text when no image */}
+                <div className="absolute inset-0 bg-white bg-opacity-0 flex items-center justify-center group-hover:bg-opacity-5 transition-all p-4">
+                  <p className="text-gray-400 text-center text-xs font-body hidden">{sponsor.name}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-700 py-6 text-center text-sm text-gray-400">
+        <p>© {new Date().getFullYear()} Madverse TicketApp. All rights reserved.</p>
+      </footer>
+    </>
+  );
+}
+
+function ContactUsPage() {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    subject: '',
+    message: ''
+  });
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch(`${API_BASE}/contact`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        setSubmitted(true);
+        setFormData({
+          name: '',
+          email: '',
+          subject: '',
+          message: ''
+        });
+        setTimeout(() => setSubmitted(false), 5000);
+      } else {
+        const data = await response.json();
+        setError(data.message || 'Failed to send message');
+      }
+    } catch (err) {
+      console.error('Error sending contact form:', err);
+      setError('Network error. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      {/* Back Button Section */}
+      <section className="bg-madverse-dark pt-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <button
+            onClick={() => navigate('/')}
+            className="text-purple-400 hover:text-purple-300 transition-colors"
+            title="Go to Home"
+          >
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+        </div>
+      </section>
+
+      {/* Header Section */}
+      <section className="bg-madverse-dark py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto text-center">
+          <h1 className="text-5xl md:text-6xl font-bold mb-4 font-display tracking-tight text-white">
+            Contact Us
+          </h1>
+          <p className="text-xl text-gray-400 font-body">
+            Have questions? We'd love to hear from you. Get in touch with the Madverse team.
+          </p>
+        </div>
+      </section>
+
+      {/* Contact Content Section */}
+      <section className="bg-madverse-dark pb-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+            {/* Contact Information */}
+            <div>
+              <div className="bg-madverse-darker border border-gray-700 rounded-lg p-6 mb-6">
+                <h3 className="text-xl font-bold font-display text-white mb-4">📍 Location</h3>
+                <p className="text-gray-400 font-body">
+                  Deep Space Pristina<br/>
+                  Pristina, Kosovo
+                </p>
+              </div>
+
+              <div className="bg-madverse-darker border border-gray-700 rounded-lg p-6 mb-6">
+                <h3 className="text-xl font-bold font-display text-white mb-4">📧 Email</h3>
+                <p className="text-purple-400 font-body hover:text-purple-300">
+                  <a href="mailto:info@madverse.com">info@madverse.com</a>
+                </p>
+              </div>
+
+              <div className="bg-madverse-darker border border-gray-700 rounded-lg p-6">
+                <h3 className="text-xl font-bold font-display text-white mb-4">📱 Phone</h3>
+                <p className="text-purple-400 font-body hover:text-purple-300">
+                  <a href="tel:+38121234567">+381 21 234 567</a>
+                </p>
+              </div>
+            </div>
+
+            {/* Contact Form */}
+            <div className="lg:col-span-2">
+              <div className="bg-madverse-darker border border-gray-700 rounded-lg p-8">
+                <h2 className="text-2xl font-bold font-display text-white mb-6">Send us a Message</h2>
+
+                {submitted && (
+                  <div className="mb-6 p-4 bg-green-900/30 border border-green-600 rounded-lg">
+                    <p className="text-green-400 font-body font-semibold">✓ Thank you! Your message has been sent successfully.</p>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="mb-6 p-4 bg-red-900/30 border border-red-600 rounded-lg">
+                    <p className="text-red-400 font-body font-semibold">✗ {error}</p>
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-gray-300 font-body text-sm mb-2">Full Name</label>
+                      <input
+                        type="text"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                        placeholder="John Doe"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-300 font-body text-sm mb-2">Email Address</label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                        placeholder="you@example.com"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-300 font-body text-sm mb-2">Subject</label>
+                    <input
+                      type="text"
+                      name="subject"
+                      value={formData.subject}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                      placeholder="What is this about?"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-300 font-body text-sm mb-2">Message</label>
+                    <textarea
+                      name="message"
+                      value={formData.message}
+                      onChange={handleInputChange}
+                      required
+                      rows="5"
+                      className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors resize-none"
+                      placeholder="Your message here..."
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white font-body font-semibold py-3 rounded uppercase tracking-wide transition-colors"
+                  >
+                    {loading ? 'Sending...' : 'Send Message'}
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-700 py-6 text-center text-sm text-gray-400">
+        <p>© {new Date().getFullYear()} Madverse TicketApp. All rights reserved.</p>
+      </footer>
+    </>
+  );
+}
+
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/events" element={<EventsPage />} />
       <Route path="/event/:id" element={<EventDetailPage />} />
-      <Route path="/dashboard" element={<DashboardPage />} />
+      <Route path="/partners" element={<OurPartnersPage />} />
+      <Route path="/contact" element={<ContactUsPage />} />
+      <Route path="/dashboard" element={<ProtectedRoute requireAdmin={true}><DashboardPage /></ProtectedRoute>} />
       <Route
         path="/tickets"
         element={

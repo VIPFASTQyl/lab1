@@ -8,6 +8,7 @@ import eventsRoutes from './routes-events.js';
 import salesRoutes from './routes-sales.js';
 import extrasRoutes from './routes-extras.js';
 import relationsRoutes from './routes-relations.js';
+import contactRoutes from './routes-contact.js';
 
 const app = express();
 
@@ -20,6 +21,9 @@ app.get('/', (req, res) => {
 
 // Authentication
 app.use('/api/auth', authRoutes);
+
+// Contact Form
+app.use('/api/contact', contactRoutes);
 
 // Admin Dashboard
 app.use('/api/dashboard', dashboardRoutes);

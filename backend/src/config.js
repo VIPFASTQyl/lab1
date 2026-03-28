@@ -18,3 +18,8 @@ export const jwtConfig = {
   secret: process.env.JWT_SECRET || 'super_secret_key_change_me',
   expiresIn: '1h'
 };
+
+export const emailConfig = {
+  apiKey: process.env.MAILTRAP_API_KEY || 'your-mailtrap-api-key',
+  recipientEmail: process.env.RECIPIENT_EMAIL || 'info@madverse.com'
+};
