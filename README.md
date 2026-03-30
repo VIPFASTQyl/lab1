@@ -88,3 +88,5 @@ Location: `frontend`
 - `/tickets` — protected page to list existing tickets and create new tickets.
 
 You can style the React components (forms, tables, dashboard cards) using Bootstrap or Tailwind as required by the assignment.
+
+
