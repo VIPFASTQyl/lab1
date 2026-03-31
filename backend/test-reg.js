@@ -1,0 +1,1 @@
+﻿import { getDbPool } from './src/db.js'; async function test() { try { const db = await getDbPool(); await db.run('INSERT INTO Users (FirstName, LastName, Email, PasswordHash, IsAdmin, CreatedAt) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)', ['John', 'Doe', 'j@d.com', 'hash', 0]); console.log('success'); } catch(e) { console.error('BIG ERROR:', e); } } test();

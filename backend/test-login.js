@@ -1,0 +1,1 @@
+﻿import { getDbPool } from './src/db.js'; async function test() { try { const db = await getDbPool(); const user = await db.get('SELECT Id, FirstName, Email, PasswordHash, IsAdmin FROM Users WHERE Email = ? LIMIT 1', ['test@test.com']); console.log(user); } catch (e) { console.error('BIG ERROR:', e); } } test();
