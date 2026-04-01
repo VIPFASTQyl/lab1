@@ -1,5 +1,11 @@
 import React, { useEffect, useState, useContext, createContext } from 'react';
 import { Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
+import PaymentForm from './PaymentForm';
+import PaymentStatus from './PaymentStatus';
+
+const stripePromise = loadStripe('pk_test_51TH577JC8lVJ2DPRw5KJybQ5iXjLPw9moLaZwkcb79B346GoK1YRCut4eecmbn9qXraVKppXudkmY6LVQMWcoUj000fKmL73ek'); // Replace with your Stripe public key
 
 const API_BASE = '/api';
 
@@ -997,6 +1003,14 @@ function DashboardPage() {
             color="text-yellow-400"
           />
         </div>
+
+        {/* Payment Route */}
+        <Elements stripe={stripePromise}>
+          <Routes>
+            <Route path="/payment" element={<PaymentForm />} />
+            <Route path="/payment-status" element={<PaymentStatus />} />
+          </Routes>
+        </Elements>
 
         {/* Event Breakdown Section */}
         <div className="bg-madverse-darker border border-gray-700 rounded-lg overflow-hidden mb-8">
@@ -2102,7 +2116,10 @@ function CheckoutPage() {
                     </div>
                   </div>
 
-                  <button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-body font-bold py-3 rounded uppercase tracking-wide transition-colors mb-3">
+                  <button
+                    onClick={() => window.location.href = 'https://buy.stripe.com/test_00w6oIf9f0ch6vg3Ih0Jq00'}
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-body font-bold py-3 rounded uppercase tracking-wide transition-colors mb-3"
+                  >
                     Proceed to Payment
                   </button>
 
@@ -2120,6 +2137,217 @@ function CheckoutPage() {
                       ✓ Money-back guarantee
                     </p>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PaymentPage() {
+  const navigate = useNavigate();
+  const { basket, clearBasket } = useBasket();
+  const [cardholderName, setCardholderName] = useState('');
+  const [email, setEmail] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [cvc, setCvc] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const total = basket.reduce((sum, item) => sum + item.total, 0);
+
+  const formatCardNumber = (value) => {
+    const digits = value.replace(/\D/g, '').slice(0, 16);
+    return digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+  };
+
+  const formatExpiry = (value) => {
+    const digits = value.replace(/\D/g, '').slice(0, 4);
+    if (digits.length <= 2) return digits;
+    return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  };
+
+  const handlePayment = async (e) => {
+    e.preventDefault();
+    setMessage('');
+
+    if (basket.length === 0) {
+      setMessage('Your basket is empty. Add tickets before paying.');
+      return;
+    }
+
+    if (!cardholderName || !email || !cardNumber || !expiry || !cvc) {
+      setMessage('Please complete all payment fields.');
+      return;
+    }
+
+    if (cardNumber.replace(/\s/g, '').length < 16) {
+      setMessage('Card number must be 16 digits.');
+      return;
+    }
+
+    if (expiry.length !== 5) {
+      setMessage('Expiry date must be in MM/YY format.');
+      return;
+    }
+
+    if (cvc.length < 3) {
+      setMessage('CVC must be at least 3 digits.');
+      return;
+    }
+
+    setLoading(true);
+
+    // Simulate Stripe confirmation in demo mode.
+    setTimeout(() => {
+      clearBasket();
+      setLoading(false);
+      navigate('/events');
+      alert('Payment successful with Stripe. Your tickets are confirmed.');
+    }, 1200);
+  };
+
+  return (
+    <div className="min-h-screen bg-madverse-dark">
+      <header className="bg-madverse-darker border-b border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate('/checkout')}
+                className="text-purple-400 hover:text-purple-300 text-2xl font-bold"
+                title="Back to Checkout"
+              >
+                ←
+              </button>
+              <span className="text-white font-bold text-xl font-festival tracking-wider">MADVERSE</span>
+            </div>
+            <button
+              onClick={() => navigate('/')}
+              className="text-sm uppercase font-body font-semibold border border-white px-3 py-1 rounded hover:bg-white hover:text-madverse-dark transition-colors"
+            >
+              Home
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div className="py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto">
+          <div className="mb-10">
+            <h1 className="text-4xl md:text-5xl font-bold font-display text-white mb-2">Stripe Payment</h1>
+            <p className="text-gray-400 font-body">Complete your payment securely with card details.</p>
+          </div>
+
+          {basket.length === 0 ? (
+            <div className="bg-madverse-darker border border-gray-700 rounded-lg p-12 text-center">
+              <h2 className="text-2xl font-bold font-display text-white mb-4">No items to pay for</h2>
+              <p className="text-gray-400 font-body mb-8">Please add tickets first, then proceed to checkout.</p>
+              <button
+                onClick={() => navigate('/events')}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-body font-bold px-8 py-3 rounded uppercase tracking-wide transition-colors"
+              >
+                Browse Events
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 bg-madverse-darker border border-gray-700 rounded-lg p-6 sm:p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold font-display text-white">Card Details</h2>
+                  <span className="text-xs uppercase tracking-widest text-indigo-300 border border-indigo-300/40 px-2 py-1 rounded">Powered by Stripe</span>
+                </div>
+
+                {message && (
+                  <div className="mb-6 p-3 rounded border border-red-600 bg-red-900/30 text-red-300 text-sm font-body">
+                    {message}
+                  </div>
+                )}
+
+                <form onSubmit={handlePayment} className="space-y-4">
+                  <div>
+                    <label className="block text-gray-300 font-body text-sm mb-2">Cardholder Name</label>
+                    <input
+                      value={cardholderName}
+                      onChange={(e) => setCardholderName(e.target.value)}
+                      className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                      placeholder="Jane Doe"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-300 font-body text-sm mb-2">Email for receipt</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                      placeholder="you@example.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-300 font-body text-sm mb-2">Card Number</label>
+                    <input
+                      inputMode="numeric"
+                      value={cardNumber}
+                      onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                      className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                      placeholder="4242 4242 4242 4242"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-gray-300 font-body text-sm mb-2">Expiry</label>
+                      <input
+                        inputMode="numeric"
+                        value={expiry}
+                        onChange={(e) => setExpiry(formatExpiry(e.target.value))}
+                        className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                        placeholder="MM/YY"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-300 font-body text-sm mb-2">CVC</label>
+                      <input
+                        inputMode="numeric"
+                        value={cvc}
+                        onChange={(e) => setCvc(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                        className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                        placeholder="123"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white font-body font-bold py-3 rounded uppercase tracking-wide transition-colors mt-2"
+                  >
+                    {loading ? 'Processing Payment...' : `Pay €${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  </button>
+                </form>
+              </div>
+
+              <div className="bg-madverse-darker border border-gray-700 rounded-lg p-6 h-fit">
+                <h3 className="text-xl font-bold font-display text-white mb-4">Order Review</h3>
+                <div className="space-y-3 mb-5 max-h-72 overflow-y-auto">
+                  {basket.map((item, idx) => (
+                    <div key={idx} className="bg-madverse-dark p-3 rounded border border-gray-700">
+                      <p className="text-white font-semibold text-sm">{item.eventName}</p>
+                      <p className="text-gray-400 text-xs">{item.ticketTypeName || item.ticketType} × {item.quantity}</p>
+                      <p className="text-yellow-400 font-bold text-sm mt-1">€{item.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t border-gray-700 pt-4 flex justify-between items-center">
+                  <span className="text-gray-300 font-body">Total</span>
+                  <span className="text-yellow-400 font-bold font-display text-2xl">€{total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
             </div>
@@ -3091,6 +3319,7 @@ export default function App() {
         }
       />
       <Route path="/checkout" element={<CheckoutPage />} />
+      <Route path="/payment" element={<PaymentPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
