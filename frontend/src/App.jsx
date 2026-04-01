@@ -1,11 +1,5 @@
 import React, { useEffect, useState, useContext, createContext } from 'react';
 import { Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements } from '@stripe/react-stripe-js';
-import PaymentForm from './PaymentForm';
-import PaymentStatus from './PaymentStatus';
-
-const stripePromise = loadStripe('pk_test_51TH577JC8lVJ2DPRw5KJybQ5iXjLPw9moLaZwkcb79B346GoK1YRCut4eecmbn9qXraVKppXudkmY6LVQMWcoUj000fKmL73ek'); // Replace with your Stripe public key
 
 const API_BASE = '/api';
 
@@ -1003,14 +997,6 @@ function DashboardPage() {
             color="text-yellow-400"
           />
         </div>
-
-        {/* Payment Route */}
-        <Elements stripe={stripePromise}>
-          <Routes>
-            <Route path="/payment" element={<PaymentForm />} />
-            <Route path="/payment-status" element={<PaymentStatus />} />
-          </Routes>
-        </Elements>
 
         {/* Event Breakdown Section */}
         <div className="bg-madverse-darker border border-gray-700 rounded-lg overflow-hidden mb-8">
