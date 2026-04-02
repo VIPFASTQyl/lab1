@@ -670,6 +670,13 @@ function DashboardPage() {
   const [showEventModal, setShowEventModal] = useState(false);
   const [editingEventId, setEditingEventId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [notification, setNotification] = useState(null);
+
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
   const [formData, setFormData] = useState({ 
     name: '', 
     description: '', 
@@ -811,25 +818,25 @@ function DashboardPage() {
 
   const handleSaveEvent = () => {
     if (!formData.name || !formData.description) {
-      alert('Please fill in event name and description');
+      showNotification('Please fill in event name and description', 'error');
       return;
     }
 
     // Check if at least one ticket type is enabled
     const enabledTypes = Object.values(formData.ticketTypes).filter(t => t.enabled);
     if (enabledTypes.length === 0) {
-      alert('Please enable at least one ticket type');
+      showNotification('Please enable at least one ticket type', 'error');
       return;
     }
 
     // Validate ticket type prices and stock
     for (const type of enabledTypes) {
       if (!type.price || type.price <= 0) {
-        alert(`Please enter a valid price for ${type.name}`);
+        showNotification(`Please enter a valid price for ${type.name}`, 'error');
         return;
       }
       if (!type.stock || type.stock <= 0) {
-        alert(`Please enter valid stock for ${type.name}`);
+        showNotification(`Please enter valid stock for ${type.name}`, 'error');
         return;
       }
     }
@@ -861,10 +868,10 @@ function DashboardPage() {
 
     if (editingEventId) {
       updateEvent(editingEventId, eventData);
-      alert('Event updated successfully');
+      showNotification('Event updated successfully');
     } else {
       addEvent(eventData);
-      alert('Event created successfully');
+      showNotification('Event created successfully');
     }
     handleCloseModal();
   };
@@ -872,7 +879,7 @@ function DashboardPage() {
   const handleDeleteEvent = (id) => {
     deleteEvent(id);
     setDeleteConfirmId(null);
-    alert('Event deleted successfully');
+    showNotification('Event deleted successfully');
   };
 
   // Object Map handlers
@@ -937,7 +944,7 @@ function DashboardPage() {
     };
     
     updateEvent(selectedEventForMap, updatedEvent);
-    alert('Seating layout saved successfully!');
+    showNotification('Seating layout saved successfully!');
     setShowObjectMapModal(false);
   };
 
@@ -952,7 +959,7 @@ function DashboardPage() {
     
     updateEvent(selectedEventForMap, updatedEvent);
     setShowObjectMapModal(false);
-    alert('Seating layout cleared!');
+    showNotification('Seating layout cleared!');
   };
 
   return (
@@ -1463,6 +1470,13 @@ function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Notification Toast */}
+        {notification && (
+          <div className={`fixed top-10 left-1/2 transform -translate-x-1/2 z-[100] px-8 py-4 rounded-xl shadow-2xl font-body font-bold text-lg text-center min-w-[320px] text-white transition-all duration-300 ${notification.type === 'error' ? 'bg-red-600' : 'bg-emerald-600'}`}>
+            {notification.message}
+          </div>
+        )}
       </div>
     </div>
   );
