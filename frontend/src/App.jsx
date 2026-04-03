@@ -2117,7 +2117,25 @@ function CheckoutPage() {
                   </div>
 
                   <button
-                    onClick={() => window.location.href = 'https://buy.stripe.com/test_00w6oIf9f0ch6vg3Ih0Jq00'}
+                    onClick={async () => {
+                      try {
+                        const response = await fetch('http://localhost:5000/api/create-checkout-session', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ basket })
+                        });
+                        const data = await response.json();
+                        if (data.url) {
+                          window.location.href = data.url;
+                        } else {
+                          console.error("Failed to create session:", data);
+                          alert("Failed to start checkout process.");
+                        }
+                      } catch (err) {
+                        console.error("Payment Error:", err);
+                        alert("Payment service unavailable.");
+                      }
+                    }}
                     className="w-full bg-purple-600 hover:bg-purple-700 text-white font-body font-bold py-3 rounded uppercase tracking-wide transition-colors mb-3"
                   >
                     Proceed to Payment
