@@ -1,0 +1,60 @@
+﻿diff --git a/frontend/src/App.jsx b/frontend/src/App.jsx
+index 0e0fd50..1c457c6 100644
+--- a/frontend/src/App.jsx
++++ b/frontend/src/App.jsx
+@@ -2990,55 +2990,6 @@ function EventDetailPage() {
+ 
+ function OurPartnersPage() {
+   const navigate = useNavigate();
+-  const location = useLocation();
+-  const { basket } = useBasket();
+-  const { user, logout: authLogout } = useAuth();
+-
+-  const [showProfile, setShowProfile] = useState(false);
+-  const [profileData, setProfileData] = useState(null);
+-  const [orders, setOrders] = useState([]);
+-  const [loadingProfile, setLoadingProfile] = useState(false);
+-
+-  const loadUserProfile = async () => {
+-    setLoadingProfile(true);
+-    try {
+-      const profileRes = await fetch(`${API_BASE}/auth/profile`, {
+-        headers: {
+-          Authorization: `Bearer ${getToken()}`
+-        }
+-      });
+-      if (profileRes.ok) {
+-        const profileInfo = await profileRes.json();
+-        setProfileData(profileInfo);
+-      }
+-
+-      const ordersRes = await fetch(`${API_BASE}/auth/orders`, {
+-        headers: {
+-          Authorization: `Bearer ${getToken()}`
+-        }
+-      });
+-      if (ordersRes.ok) {
+-        const ordersInfo = await ordersRes.json();
+-        setOrders(ordersInfo.orders || []);
+-      }
+-    } catch (err) {
+-      console.error('Error loading profile:', err);
+-    }
+-    setLoadingProfile(false);
+-  };
+-
+-  const handleProfileClick = () => {
+-    setShowProfile(!showProfile);
+-    if (!showProfile && !profileData) {
+-      loadUserProfile();
+-    }
+-  };
+-
+-  const handleLogout = () => {
+-    authLogout();
+-    setShowProfile(false);
+-    navigate('/login');
+-  };
+ 
+   // Create 25 sponsor boxes (5x5 grid)
+   const sponsors = Array.from({ length: 25 }, (_, i) => ({

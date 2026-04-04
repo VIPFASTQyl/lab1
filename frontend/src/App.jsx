@@ -2988,128 +2988,6 @@ function EventDetailPage() {
   );
 }
 
-function OurPartnersPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { basket } = useBasket();
-  const { user, logout: authLogout } = useAuth();
-
-  const [showProfile, setShowProfile] = useState(false);
-  const [profileData, setProfileData] = useState(null);
-  const [orders, setOrders] = useState([]);
-  const [loadingProfile, setLoadingProfile] = useState(false);
-
-  const loadUserProfile = async () => {
-    setLoadingProfile(true);
-    try {
-      const profileRes = await fetch(`${API_BASE}/auth/profile`, {
-        headers: {
-          Authorization: `Bearer ${getToken()}`
-        }
-      });
-      if (profileRes.ok) {
-        const profileInfo = await profileRes.json();
-        setProfileData(profileInfo);
-      }
-
-      const ordersRes = await fetch(`${API_BASE}/auth/orders`, {
-        headers: {
-          Authorization: `Bearer ${getToken()}`
-        }
-      });
-      if (ordersRes.ok) {
-        const ordersInfo = await ordersRes.json();
-        setOrders(ordersInfo.orders || []);
-      }
-    } catch (err) {
-      console.error('Error loading profile:', err);
-    }
-    setLoadingProfile(false);
-  };
-
-  const handleProfileClick = () => {
-    setShowProfile(!showProfile);
-    if (!showProfile && !profileData) {
-      loadUserProfile();
-    }
-  };
-
-  const handleLogout = () => {
-    authLogout();
-    setShowProfile(false);
-    navigate('/login');
-  };
-
-  // Create 25 sponsor boxes (5x5 grid)
-  const sponsors = Array.from({ length: 25 }, (_, i) => ({
-    id: i + 1,
-    name: `Sponsor ${i + 1}`
-  }));
-
-  return (
-    <>
-      {/* Back Button Section */}
-      <section className="bg-yellow-400 pt-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <button
-            onClick={() => navigate('/')}
-            className="text-gray-900 hover:text-gray-700 transition-colors"
-            title="Go to Home"
-          >
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-        </div>
-      </section>
-
-      {/* Text Section */}
-      <section className="bg-yellow-400 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-5xl md:text-6xl font-bold mb-4 font-display tracking-tight text-gray-900">
-            Our Partners
-          </h1>
-          <p className="text-xl text-gray-700 font-body">
-            We're proud to work with these amazing sponsors and partners
-          </p>
-        </div>
-      </section>
-
-      {/* Sponsors Grid Section */}
-      <section className="bg-yellow-400 pb-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          {/* 5x5 Grid for Sponsors */}
-          <div className="grid grid-cols-5 gap-0 border border-black bg-yellow-400">
-            {sponsors.map((sponsor) => (
-              <div
-                key={sponsor.id}
-                className="aspect-square bg-yellow-400 border border-black flex items-center justify-center hover:shadow-lg transition-shadow duration-300 overflow-hidden group"
-              >
-                <div className="w-full h-full flex items-center justify-center p-6">
-                  <img
-                    src=""
-                    alt={sponsor.name}
-                    className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-                {/* Placeholder text when no image */}
-                <div className="absolute inset-0 bg-white bg-opacity-0 flex items-center justify-center group-hover:bg-opacity-5 transition-all p-4">
-                  <p className="text-gray-400 text-center text-xs font-body hidden">{sponsor.name}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-gray-700 py-6 text-center text-sm text-gray-400">
-        <p>© {new Date().getFullYear()} Madverse TicketApp. All rights reserved.</p>
-      </footer>
-    </>
-  );
-}
-
 function ContactUsPage() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -3317,14 +3195,46 @@ function ContactUsPage() {
   );
 }
 
+function OurPartnersPage() {
+  const navigate = useNavigate();
+  return (
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#ffaa00] to-[#ffdd00]">
+      <div className="flex-grow p-8">
+        <button
+          onClick={() => navigate(-1)}
+          className="absolute top-8 left-8 text-black hover:text-gray-700 transition-colors"
+          title="Go Back"
+        >
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <h1 className="text-5xl font-bold text-center text-black mb-4 font-display mt-16">Our Partners</h1>
+        <p className="text-lg text-center text-black mb-12">Partners we work with</p>
+        <div className="max-w-5xl mx-auto grid grid-cols-3 gap-8 mt-40">
+          {/* Placeholder for 9 partner logos */}
+          {[...Array(9)].map((_, i) => (
+            <div key={i} className="bg-black w-60 h-40 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold">Partner {i + 1}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <footer className="bg-madverse-darker mt-16 border-t border-gray-700 py-6 text-center text-sm text-gray-400">
+        <p>© {new Date().getFullYear()} Madverse TicketApp. All rights reserved.</p>
+      </footer>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/events" element={<EventsPage />} />
       <Route path="/event/:id" element={<EventDetailPage />} />
-      <Route path="/partners" element={<OurPartnersPage />} />
       <Route path="/contact" element={<ContactUsPage />} />
+      <Route path="/partners" element={<OurPartnersPage />} />
       <Route path="/dashboard" element={<ProtectedRoute requireAdmin={true}><DashboardPage /></ProtectedRoute>} />
       <Route
         path="/tickets"
