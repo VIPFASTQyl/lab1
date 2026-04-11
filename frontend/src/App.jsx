@@ -703,7 +703,7 @@ function DashboardPage() {
   const [partners, setPartners] = useState([]);
   const [showPartnerModal, setShowPartnerModal] = useState(false);
   const [editingPartnerId, setEditingPartnerId] = useState(null);
-  const [partnerFormData, setPartnerFormData] = useState({ name: '', logo_url: '', link: '', description: '' });
+  const [partnerFormData, setPartnerFormData] = useState({ name: '', logo_url: '', link: '', description: '', logoPreview: '' });
 
   const { events, addEvent, updateEvent, deleteEvent } = useEvents();
 
@@ -773,10 +773,10 @@ function DashboardPage() {
   // Partner Handlers
   const handleOpenPartnerModal = (partner = null) => {
     if (partner) {
-      setPartnerFormData({ name: partner.name, logo_url: partner.logo_url || '', link: partner.link || '', description: partner.description || '' });
+      setPartnerFormData({ name: partner.name, logo_url: partner.logo_url || '', link: partner.link || '', description: partner.description || '', logoPreview: partner.logo_url || '' });
       setEditingPartnerId(partner.id);
     } else {
-      setPartnerFormData({ name: '', logo_url: '', link: '', description: '' });
+      setPartnerFormData({ name: '', logo_url: '', link: '', description: '', logoPreview: '' });
       setEditingPartnerId(null);
     }
     setShowPartnerModal(true);
@@ -784,8 +784,19 @@ function DashboardPage() {
 
   const handleClosePartnerModal = () => {
     setShowPartnerModal(false);
-    setPartnerFormData({ name: '', logo_url: '', link: '', description: '' });
+    setPartnerFormData({ name: '', logo_url: '', link: '', description: '', logoPreview: '' });
     setEditingPartnerId(null);
+  };
+
+  const handlePartnerImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPartnerFormData({ ...partnerFormData, logo_url: reader.result, logoPreview: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handlePartnerSubmit = async () => {
@@ -1627,14 +1638,20 @@ function DashboardPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-400 text-sm font-bold mb-2">Logo URL</label>
-                  <input
-                    type="url"
-                    value={partnerFormData.logo_url}
-                    onChange={(e) => setPartnerFormData({...partnerFormData, logo_url: e.target.value})}
-                    className="w-full bg-black/30 border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-purple-500"
-                    placeholder="https://example.com/logo.png"
-                  />
+                  <label className="block text-gray-400 text-sm font-bold mb-2">Partner Logo</label>
+                  <div className="space-y-3">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePartnerImageUpload}
+                      className="w-full bg-black/30 border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-purple-500"
+                    />
+                    {partnerFormData.logoPreview && (
+                      <div className="relative w-32 h-32 rounded overflow-hidden border border-gray-700 bg-black/50 mx-auto">
+                        <img src={partnerFormData.logoPreview} alt="Logo Preview" className="w-full h-full object-contain" />
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-gray-400 text-sm font-bold mb-2">Website Link</label>
@@ -3465,7 +3482,7 @@ function OurPartnersPage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#ffaa00] to-[#ffdd00]">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#ffaa00] to-[#ffdd00] relative">
       <div className="flex-grow p-8">
         <button
           onClick={() => navigate(-1)}
@@ -3476,6 +3493,11 @@ function OurPartnersPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
+        <img 
+          src="/logo.png" 
+          alt="Brand Logo" 
+          className="absolute top-8 right-8 w-12 h-12 object-contain"
+        />
         <h1 className="text-5xl font-bold text-center text-black mb-4 font-display mt-16">Our Partners</h1>
         <p className="text-lg text-center text-black mb-12">Partners we work with</p>
         
@@ -3489,18 +3511,18 @@ function OurPartnersPage() {
                 href={p.link || '#'}
                 target={p.link ? "_blank" : "_self"}
                 rel="noopener noreferrer"
-                className="bg-black/90 p-6 rounded-xl flex flex-col items-center justify-center text-center transform hover:scale-105 transition-all shadow-xl hover:shadow-black/50 overflow-hidden group cursor-pointer"
+                className="bg-transparent border border-white/30 hover:border-white/50 hover:shadow-[0_0_20px_rgba(255,255,255,0.8)] p-6 rounded-xl flex flex-col items-center justify-center text-center transform hover:scale-105 transition-all overflow-hidden group cursor-pointer"
               >
                 {p.logo_url ? (
                   <img src={p.logo_url} alt={p.name} className="w-32 h-32 object-contain mb-4 rounded-lg group-hover:opacity-90 transition-opacity" />
                 ) : (
-                  <div className="w-32 h-32 bg-gray-800 rounded-lg flex items-center justify-center mb-4">
-                    <span className="text-white/50 text-xs">No Logo</span>
+                  <div className="w-32 h-32 bg-black/10 rounded-lg flex items-center justify-center mb-4">
+                    <span className="text-black/50 text-xs font-bold">No Logo</span>
                   </div>
                 )}
-                <h3 className="text-white font-display text-xl font-bold mb-2">{p.name}</h3>
+                <h3 className="text-black font-display text-xl font-bold mb-2">{p.name}</h3>
                 {p.description && (
-                  <p className="text-gray-400 font-body text-sm line-clamp-3">{p.description}</p>
+                  <p className="text-black/70 font-body text-sm line-clamp-3">{p.description}</p>
                 )}
               </a>
             ))}
