@@ -9,7 +9,9 @@ import salesRoutes from './routes-sales.js';
 import extrasRoutes from './routes-extras.js';
 import relationsRoutes from './routes-relations.js';
 import contactRoutes from './routes-contact.js';
+import partnersRoutes from './routes-partners.js';
 import Stripe from 'stripe';
+import 'dotenv/config';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'YOUR_STRIPE_SECRET_KEY_HERE');
 
@@ -78,6 +80,9 @@ app.use('/api/extras', extrasRoutes);
 
 // Relations (EventOrganizers)
 app.use('/api/relations', relationsRoutes);
+
+// Partners Management
+app.use('/api/partners', partnersRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: 'Not found' });

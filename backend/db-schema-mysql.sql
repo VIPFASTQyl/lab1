@@ -178,3 +178,14 @@ CREATE TABLE IF NOT EXISTS Ratings (
   INDEX idx_Ratings_EventId (EventId),
   INDEX idx_Ratings_ClientId (ClientId)
 );
+
+-- Partners
+CREATE TABLE IF NOT EXISTS Partners (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(200) NOT NULL,
+  logo_url VARCHAR(500),
+  link VARCHAR(500),
+  description LONGTEXT,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
