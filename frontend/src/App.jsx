@@ -2712,7 +2712,7 @@ function EventsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-madverse-dark">
+    <div className="min-h-screen bg-gradient-to-b from-[#020617] to-[#343745]">
       {/* Header */}
       <header className="bg-madverse-darker border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -3308,9 +3308,10 @@ function ContactUsPage() {
   };
 
   return (
-    <>
+    <div className="min-h-screen bg-gradient-to-b from-[#020617] to-[#343745] flex flex-col">
+      <div className="flex-grow">
       {/* Back Button Section */}
-      <section className="bg-madverse-dark pt-8 px-4 sm:px-6 lg:px-8">
+      <section className="pt-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <button
             onClick={() => navigate('/')}
@@ -3325,7 +3326,7 @@ function ContactUsPage() {
       </section>
 
       {/* Header Section */}
-      <section className="bg-madverse-dark py-12 px-4 sm:px-6 lg:px-8">
+      <section className="py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold mb-4 font-display tracking-tight text-white">
             Contact Us
@@ -3337,7 +3338,7 @@ function ContactUsPage() {
       </section>
 
       {/* Contact Content Section */}
-      <section className="bg-madverse-dark pb-16 px-4 sm:px-6 lg:px-8">
+      <section className="pb-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
             {/* Contact Information */}
@@ -3392,7 +3393,7 @@ function ContactUsPage() {
                         value={formData.name}
                         onChange={handleInputChange}
                         required
-                        className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                        className="w-full bg-madverse-darker border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
                         placeholder="John Doe"
                       />
                     </div>
@@ -3405,7 +3406,7 @@ function ContactUsPage() {
                         value={formData.email}
                         onChange={handleInputChange}
                         required
-                        className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                        className="w-full bg-madverse-darker border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
                         placeholder="you@example.com"
                       />
                     </div>
@@ -3419,7 +3420,7 @@ function ContactUsPage() {
                       value={formData.subject}
                       onChange={handleInputChange}
                       required
-                      className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                      className="w-full bg-madverse-darker border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
                       placeholder="What is this about?"
                     />
                   </div>
@@ -3432,7 +3433,7 @@ function ContactUsPage() {
                       onChange={handleInputChange}
                       required
                       rows="5"
-                      className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors resize-none"
+                      className="w-full bg-madverse-darker border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors resize-none"
                       placeholder="Your message here..."
                     />
                   </div>
@@ -3452,10 +3453,11 @@ function ContactUsPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-700 py-6 text-center text-sm text-gray-400">
+      <footer className="bg-[#020617] border-t border-gray-700 py-6 text-center text-sm text-gray-400">
         <p>© {new Date().getFullYear()} Madverse TicketApp. All rights reserved.</p>
       </footer>
-    </>
+      </div>
+    </div>
   );
 }
 
@@ -3482,7 +3484,7 @@ function OurPartnersPage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-madverse-dark relative">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#020617] to-[#343745] relative">
       <div className="flex-grow p-8">
         <button
           onClick={() => navigate(-1)}
