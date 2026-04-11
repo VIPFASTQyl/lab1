@@ -3482,11 +3482,11 @@ function OurPartnersPage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#ffaa00] to-[#ffdd00] relative">
+    <div className="min-h-screen flex flex-col bg-madverse-dark relative">
       <div className="flex-grow p-8">
         <button
           onClick={() => navigate(-1)}
-          className="absolute top-8 left-8 text-black hover:text-gray-700 transition-colors"
+          className="absolute top-8 left-8 text-purple-400 hover:text-purple-300 transition-colors"
           title="Go Back"
         >
           <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3498,11 +3498,11 @@ function OurPartnersPage() {
           alt="Brand Logo" 
           className="absolute top-8 right-8 w-12 h-12 object-contain"
         />
-        <h1 className="text-5xl font-bold text-center text-black mb-4 font-display mt-16">Our Partners</h1>
-        <p className="text-lg text-center text-black mb-12">Partners we work with</p>
+        <h1 className="text-5xl font-bold text-center text-white mb-4 font-display mt-16 tracking-tight">Our Partners</h1>
+        <p className="text-lg text-center text-purple-400 mb-12 font-body font-semibold">Partners we work with</p>
         
         {loading ? (
-          <div className="text-center text-black mt-20 text-2xl">Loading partners...</div>
+          <div className="text-center text-white mt-20 text-2xl">Loading partners...</div>
         ) : (
           <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-20">
             {partners.map(p => (
@@ -3511,23 +3511,23 @@ function OurPartnersPage() {
                 href={p.link || '#'}
                 target={p.link ? "_blank" : "_self"}
                 rel="noopener noreferrer"
-                className="bg-transparent border border-white/30 hover:border-white/50 hover:shadow-[0_0_20px_rgba(255,255,255,0.8)] p-6 rounded-xl flex flex-col items-center justify-center text-center transform hover:scale-105 transition-all overflow-hidden group cursor-pointer"
+                className="bg-white/5 border border-gray-700 hover:border-purple-500 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] p-6 rounded-xl flex flex-col items-center justify-center text-center transform hover:scale-105 transition-all overflow-hidden group cursor-pointer"
               >
                 {p.logo_url ? (
                   <img src={p.logo_url} alt={p.name} className="w-32 h-32 object-contain mb-4 rounded-lg group-hover:opacity-90 transition-opacity" />
                 ) : (
-                  <div className="w-32 h-32 bg-black/10 rounded-lg flex items-center justify-center mb-4">
-                    <span className="text-black/50 text-xs font-bold">No Logo</span>
+                  <div className="w-32 h-32 bg-gray-800 rounded-lg flex items-center justify-center mb-4">
+                    <span className="text-gray-400 text-xs font-bold">No Logo</span>
                   </div>
                 )}
-                <h3 className="text-black font-display text-xl font-bold mb-2">{p.name}</h3>
+                <h3 className="text-white font-display text-xl font-bold mb-2">{p.name}</h3>
                 {p.description && (
-                  <p className="text-black/70 font-body text-sm line-clamp-3">{p.description}</p>
+                  <p className="text-gray-400 font-body text-sm line-clamp-3">{p.description}</p>
                 )}
               </a>
             ))}
             {partners.length === 0 && (
-              <div className="col-span-full text-center text-black text-xl font-bold font-body mt-20">
+              <div className="col-span-full text-center text-white text-xl font-bold font-body mt-20">
                 No partners found. Come back soon!
               </div>
             )}
