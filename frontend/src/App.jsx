@@ -670,6 +670,7 @@ function DashboardPage() {
   const [showEventModal, setShowEventModal] = useState(false);
   const [editingEventId, setEditingEventId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [deleteConfirmPartnerId, setDeleteConfirmPartnerId] = useState(null);
   const [notification, setNotification] = useState(null);
 
   const showNotification = (message, type = 'success') => {
@@ -698,6 +699,12 @@ function DashboardPage() {
   const [mapSeats, setMapSeats] = useState([]); // Array of seat objects
   const [selectedSeatType, setSelectedSeatType] = useState('vip'); // Type to assign to clicked seats
   
+  // Partners state
+  const [partners, setPartners] = useState([]);
+  const [showPartnerModal, setShowPartnerModal] = useState(false);
+  const [editingPartnerId, setEditingPartnerId] = useState(null);
+  const [partnerFormData, setPartnerFormData] = useState({ name: '', logo_url: '', link: '', description: '', logoPreview: '' });
+
   const { events, addEvent, updateEvent, deleteEvent } = useEvents();
 
   useEffect(() => {
@@ -721,6 +728,13 @@ function DashboardPage() {
         if (eventsRes.ok) {
           const eventsData = await eventsRes.json();
           setEventTickets(eventsData);
+        }
+
+        // Fetch partners
+        const partnersRes = await fetch(`${API_BASE}/partners`);
+        if (partnersRes.ok) {
+          const partnersData = await partnersRes.json();
+          setPartners(partnersData);
         }
       } catch (err) {
         console.error('Dashboard load error:', err);
@@ -755,6 +769,89 @@ function DashboardPage() {
       </div>
     </div>
   );
+
+  // Partner Handlers
+  const handleOpenPartnerModal = (partner = null) => {
+    if (partner) {
+      setPartnerFormData({ name: partner.name, logo_url: partner.logo_url || '', link: partner.link || '', description: partner.description || '', logoPreview: partner.logo_url || '' });
+      setEditingPartnerId(partner.id);
+    } else {
+      setPartnerFormData({ name: '', logo_url: '', link: '', description: '', logoPreview: '' });
+      setEditingPartnerId(null);
+    }
+    setShowPartnerModal(true);
+  };
+
+  const handleClosePartnerModal = () => {
+    setShowPartnerModal(false);
+    setPartnerFormData({ name: '', logo_url: '', link: '', description: '', logoPreview: '' });
+    setEditingPartnerId(null);
+  };
+
+  const handlePartnerImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPartnerFormData({ ...partnerFormData, logo_url: reader.result, logoPreview: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePartnerSubmit = async () => {
+    try {
+      const token = getToken();
+      const method = editingPartnerId ? 'PUT' : 'POST';
+      const url = editingPartnerId ? `${API_BASE}/partners/${editingPartnerId}` : `${API_BASE}/partners`;
+      
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(partnerFormData)
+      });
+
+      if (res.ok) {
+        showNotification(`Partner ${editingPartnerId ? 'updated' : 'created'} successfully`);
+        handleClosePartnerModal();
+        // Refresh partners
+        const partnersRes = await fetch(`${API_BASE}/partners`);
+        if (partnersRes.ok) {
+          const partnersData = await partnersRes.json();
+          setPartners(partnersData);
+        }
+      } else {
+        const errorData = await res.json();
+        showNotification(errorData.message || 'Failed to save partner', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showNotification('An error occurred while saving the partner', 'error');
+    }
+  };
+
+  const handleDeletePartner = async (id) => {
+    setDeleteConfirmPartnerId(null);
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_BASE}/partners/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        showNotification('Partner deleted successfully');
+        setPartners(partners.filter(p => p.id !== id));
+      } else {
+        showNotification('Failed to delete partner', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showNotification('An error occurred while deleting the partner', 'error');
+    }
+  };
 
   const handleOpenModal = (eventId = null) => {
     if (eventId && events[eventId]) {
@@ -1426,6 +1523,173 @@ function DashboardPage() {
                     Save Map
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Partners Management Section */}
+        <div className="bg-madverse-darker border border-gray-700 rounded-lg p-6 mb-8 mt-8">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-xl font-bold font-display text-white">Partners Management</h2>
+              <p className="text-gray-400 font-body text-sm mt-1">Manage the partners displayed on the Partners page</p>
+            </div>
+            <button
+              onClick={() => handleOpenPartnerModal()}
+              className="bg-purple-600 hover:bg-purple-700 text-white font-body font-semibold py-2 px-4 rounded uppercase tracking-wide transition-colors"
+            >
+              + Add Partner
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-madverse-dark border-b border-gray-700">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Logo & Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Website</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Description</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {partners.map(partner => (
+                  <tr key={partner.id} className="border-b border-gray-700 hover:bg-madverse-darker/50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-white flex items-center gap-3">
+                      {partner.logo_url && (
+                        <img src={partner.logo_url} alt={partner.name} className="w-10 h-10 rounded-full object-cover border border-gray-600" />
+                      )}
+                      <span>{partner.name}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 pointer-events-none">
+                      <a href={partner.link} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline pointer-events-auto">
+                        {partner.link}
+                      </a>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-400">
+                      <p className="line-clamp-1">{partner.description}</p>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex gap-2 flex-wrap">
+                        <button
+                          onClick={() => handleOpenPartnerModal(partner)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-body text-xs py-1 px-3 rounded transition-colors pointer-events-auto"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirmPartnerId(partner.id)}
+                          className="bg-red-600 hover:bg-red-700 text-white font-body text-xs py-1 px-3 rounded transition-colors pointer-events-auto"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                      {deleteConfirmPartnerId === partner.id && (
+                        <div className="mt-2 p-2 bg-red-500/20 border border-red-500 rounded">
+                          <p className="text-xs text-red-200 mb-2">Confirm deletion?</p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleDeletePartner(partner.id)}
+                              className="bg-red-600 text-white text-xs py-1 px-2 rounded"
+                            >
+                              Yes
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirmPartnerId(null)}
+                              className="bg-gray-600 text-white text-xs py-1 px-2 rounded"
+                            >
+                              No
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {partners.length === 0 && (
+                  <tr>
+                    <td colSpan="4" className="px-6 py-8 text-center text-gray-500 font-body">No partners found. Add your first partner!</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Partner Modal */}
+        {showPartnerModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
+            <div className="bg-madverse-darker border border-gray-700 rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto relative">
+              <h2 className="text-xl font-bold font-display text-white mb-4">
+                {editingPartnerId ? 'Edit Partner' : 'Add Partner'}
+              </h2>
+              
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="block text-gray-400 text-sm font-bold mb-2">Partner Name *</label>
+                  <input
+                    type="text"
+                    value={partnerFormData.name}
+                    onChange={(e) => setPartnerFormData({...partnerFormData, name: e.target.value})}
+                    className="w-full bg-black/30 border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-purple-500"
+                    placeholder="e.g. RedBull"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm font-bold mb-2">Partner Logo</label>
+                  <div className="space-y-3">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePartnerImageUpload}
+                      className="w-full bg-black/30 border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-purple-500"
+                    />
+                    {partnerFormData.logoPreview && (
+                      <div className="relative w-32 h-32 rounded overflow-hidden border border-gray-700 bg-black/50 mx-auto">
+                        <img src={partnerFormData.logoPreview} alt="Logo Preview" className="w-full h-full object-contain" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm font-bold mb-2">Website Link</label>
+                  <input
+                    type="url"
+                    value={partnerFormData.link}
+                    onChange={(e) => setPartnerFormData({...partnerFormData, link: e.target.value})}
+                    className="w-full bg-black/30 border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-purple-500"
+                    placeholder="https://redbull.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm font-bold mb-2">Description</label>
+                  <textarea
+                    value={partnerFormData.description}
+                    onChange={(e) => setPartnerFormData({...partnerFormData, description: e.target.value})}
+                    className="w-full bg-black/30 border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-purple-500 min-h-[80px]"
+                    placeholder="Write a short description..."
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
+                <button
+                  type="button"
+                  onClick={handleClosePartnerModal}
+                  className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePartnerSubmit}
+                  className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded transition-colors"
+                  disabled={!partnerFormData.name}
+                >
+                  Save Partner
+                </button>
               </div>
             </div>
           </div>
@@ -2448,7 +2712,7 @@ function EventsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-madverse-dark">
+    <div className="min-h-screen bg-gradient-to-b from-[#020617] to-[#343745]">
       {/* Header */}
       <header className="bg-madverse-darker border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -3044,9 +3308,10 @@ function ContactUsPage() {
   };
 
   return (
-    <>
+    <div className="min-h-screen bg-gradient-to-b from-[#020617] to-[#343745] flex flex-col">
+      <div className="flex-grow">
       {/* Back Button Section */}
-      <section className="bg-madverse-dark pt-8 px-4 sm:px-6 lg:px-8">
+      <section className="pt-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <button
             onClick={() => navigate('/')}
@@ -3061,7 +3326,7 @@ function ContactUsPage() {
       </section>
 
       {/* Header Section */}
-      <section className="bg-madverse-dark py-12 px-4 sm:px-6 lg:px-8">
+      <section className="py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold mb-4 font-display tracking-tight text-white">
             Contact Us
@@ -3073,7 +3338,7 @@ function ContactUsPage() {
       </section>
 
       {/* Contact Content Section */}
-      <section className="bg-madverse-dark pb-16 px-4 sm:px-6 lg:px-8">
+      <section className="pb-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
             {/* Contact Information */}
@@ -3128,7 +3393,7 @@ function ContactUsPage() {
                         value={formData.name}
                         onChange={handleInputChange}
                         required
-                        className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                        className="w-full bg-madverse-darker border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
                         placeholder="John Doe"
                       />
                     </div>
@@ -3141,7 +3406,7 @@ function ContactUsPage() {
                         value={formData.email}
                         onChange={handleInputChange}
                         required
-                        className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                        className="w-full bg-madverse-darker border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
                         placeholder="you@example.com"
                       />
                     </div>
@@ -3155,7 +3420,7 @@ function ContactUsPage() {
                       value={formData.subject}
                       onChange={handleInputChange}
                       required
-                      className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                      className="w-full bg-madverse-darker border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
                       placeholder="What is this about?"
                     />
                   </div>
@@ -3168,7 +3433,7 @@ function ContactUsPage() {
                       onChange={handleInputChange}
                       required
                       rows="5"
-                      className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors resize-none"
+                      className="w-full bg-madverse-darker border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors resize-none"
                       placeholder="Your message here..."
                     />
                   </div>
@@ -3188,37 +3453,88 @@ function ContactUsPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-700 py-6 text-center text-sm text-gray-400">
+      <footer className="bg-[#020617] border-t border-gray-700 py-6 text-center text-sm text-gray-400">
         <p>© {new Date().getFullYear()} Madverse TicketApp. All rights reserved.</p>
       </footer>
-    </>
+      </div>
+    </div>
   );
 }
 
 function OurPartnersPage() {
   const navigate = useNavigate();
+  const [partners, setPartners] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadPartners() {
+      try {
+        const res = await fetch(`${API_BASE}/partners`);
+        if (res.ok) {
+          const data = await res.json();
+          setPartners(data);
+        }
+      } catch (err) {
+        console.error('Failed to load partners', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadPartners();
+  }, []);
+
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#ffaa00] to-[#ffdd00]">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#020617] to-[#343745] relative">
       <div className="flex-grow p-8">
         <button
           onClick={() => navigate(-1)}
-          className="absolute top-8 left-8 text-black hover:text-gray-700 transition-colors"
+          className="absolute top-8 left-8 text-purple-400 hover:text-purple-300 transition-colors"
           title="Go Back"
         >
           <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <h1 className="text-5xl font-bold text-center text-black mb-4 font-display mt-16">Our Partners</h1>
-        <p className="text-lg text-center text-black mb-12">Partners we work with</p>
-        <div className="max-w-5xl mx-auto grid grid-cols-3 gap-8 mt-40">
-          {/* Placeholder for 9 partner logos */}
-          {[...Array(9)].map((_, i) => (
-            <div key={i} className="bg-black w-60 h-40 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">Partner {i + 1}</span>
-            </div>
-          ))}
-        </div>
+        <img 
+          src="/logo.png" 
+          alt="Brand Logo" 
+          className="absolute top-8 right-8 w-12 h-12 object-contain"
+        />
+        <h1 className="text-5xl font-bold text-center text-white mb-4 font-display mt-16 tracking-tight">Our Partners</h1>
+        <p className="text-lg text-center text-purple-400 mb-12 font-body font-semibold">Partners we work with</p>
+        
+        {loading ? (
+          <div className="text-center text-white mt-20 text-2xl">Loading partners...</div>
+        ) : (
+          <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-20">
+            {partners.map(p => (
+              <a
+                key={p.id}
+                href={p.link || '#'}
+                target={p.link ? "_blank" : "_self"}
+                rel="noopener noreferrer"
+                className="bg-white/5 border border-gray-700 hover:border-purple-500 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] p-6 rounded-xl flex flex-col items-center justify-center text-center transform hover:scale-105 transition-all overflow-hidden group cursor-pointer"
+              >
+                {p.logo_url ? (
+                  <img src={p.logo_url} alt={p.name} className="w-32 h-32 object-contain mb-4 rounded-lg group-hover:opacity-90 transition-opacity" />
+                ) : (
+                  <div className="w-32 h-32 bg-gray-800 rounded-lg flex items-center justify-center mb-4">
+                    <span className="text-gray-400 text-xs font-bold">No Logo</span>
+                  </div>
+                )}
+                <h3 className="text-white font-display text-xl font-bold mb-2">{p.name}</h3>
+                {p.description && (
+                  <p className="text-gray-400 font-body text-sm line-clamp-3">{p.description}</p>
+                )}
+              </a>
+            ))}
+            {partners.length === 0 && (
+              <div className="col-span-full text-center text-white text-xl font-bold font-body mt-20">
+                No partners found. Come back soon!
+              </div>
+            )}
+          </div>
+        )}
       </div>
       <footer className="bg-madverse-darker mt-16 border-t border-gray-700 py-6 text-center text-sm text-gray-400">
         <p>© {new Date().getFullYear()} Madverse TicketApp. All rights reserved.</p>

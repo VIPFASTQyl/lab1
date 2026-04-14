@@ -176,3 +176,13 @@ CREATE INDEX idx_Payments_Status ON Payments(Status);
 CREATE INDEX idx_EventOrganizers_EventId ON EventOrganizers(EventId);
 CREATE INDEX idx_Ratings_EventId ON Ratings(EventId);
 CREATE INDEX idx_Ratings_ClientId ON Ratings(ClientId);
+
+-- Partners
+CREATE TABLE Partners (
+  id INT IDENTITY(1,1) PRIMARY KEY,
+  name NVARCHAR(200) NOT NULL,
+  logo_url NVARCHAR(500),
+  link NVARCHAR(500),
+  description NVARCHAR(MAX),
+  created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+);

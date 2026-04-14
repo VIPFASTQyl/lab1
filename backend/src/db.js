@@ -160,6 +160,14 @@ async function createTablesIfNotExist() {
       EndDate DATETIME,
       Status TEXT,
       CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS Partners (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      logo_url TEXT,
+      link TEXT,
+      description TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`
   ];
   
