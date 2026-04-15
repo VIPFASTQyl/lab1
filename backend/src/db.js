@@ -168,6 +168,23 @@ async function createTablesIfNotExist() {
       link TEXT,
       description TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`,
+    
+    `CREATE TABLE IF NOT EXISTS PurchasedTickets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      purchaseId TEXT NOT NULL,
+      ticketCode TEXT UNIQUE NOT NULL,
+      oneTimeToken TEXT UNIQUE NOT NULL,
+      ticketType TEXT NOT NULL,
+      eventId INTEGER,
+      eventTitle TEXT NOT NULL,
+      holderName TEXT NOT NULL,
+      purchaserEmail TEXT NOT NULL,
+      purchased DATETIME DEFAULT CURRENT_TIMESTAMP,
+      used INTEGER DEFAULT 0,
+      usedAt DATETIME,
+      scannedBy TEXT,
+      scannedAt DATETIME
     )`
   ];
   

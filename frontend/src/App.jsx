@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext, createContext } from 'react';
-import { Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 
 const API_BASE = '/api';
 
@@ -486,6 +486,15 @@ function LoginPage() {
                 className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
                 placeholder="••••••••"
               />
+              <div className="text-right mt-2">
+                <button
+                  type="button"
+                  onClick={() => navigate('/forgot-password')}
+                  className="text-purple-400 hover:text-purple-300 text-sm font-body transition-colors"
+                >
+                  Forgot password?
+                </button>
+              </div>
             </div>
 
             <button
@@ -658,6 +667,261 @@ function RegisterPage() {
         <p className="text-center text-gray-500 text-xs font-body mt-4">
           By creating an account, you agree to our terms
         </p>
+      </div>
+    </div>
+  );
+}
+
+function ForgotPasswordPage() {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setMessage('');
+
+    if (!email) {
+      setError('Please enter your email');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        setMessage('If an account exists with this email, you will receive a password reset link shortly.');
+        setTimeout(() => navigate('/login'), 3000);
+      } else {
+        setError(data.message || 'Failed to send reset link');
+      }
+    } catch (err) {
+      setError('Network error. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-madverse-dark flex items-center justify-center p-4">
+      <div className="max-w-md w-full">
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
+              <span className="text-black font-bold text-lg">M</span>
+            </div>
+          </div>
+          <h1 className="text-4xl font-bold font-display text-white mb-2">MADVERSE</h1>
+          <p className="text-gray-400 font-body">Reset your password</p>
+        </div>
+
+        <div className="bg-madverse-darker border border-gray-700 rounded-lg p-8 space-y-6">
+          {message && (
+            <div className="bg-green-500/20 border border-green-500 text-green-200 p-4 rounded font-body text-sm">
+              {message}
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-red-500/20 border border-red-500 text-red-200 p-4 rounded font-body text-sm">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-gray-300 font-body text-sm mb-2">Email Address</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                placeholder="your@example.com"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white font-body font-semibold py-3 rounded uppercase tracking-wide transition-colors"
+            >
+              {loading ? 'Sending...' : 'Send Reset Link'}
+            </button>
+          </form>
+
+          <p className="text-center text-gray-400 font-body">
+            Remember your password?{' '}
+            <button
+              onClick={() => navigate('/login')}
+              className="text-purple-400 hover:text-purple-300 font-semibold transition-colors"
+            >
+              Sign in
+            </button>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ResetPasswordPage() {
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const token = params.get('token');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    // Verify token is valid
+    if (!token) {
+      setError('Invalid reset link. Missing token.');
+      return;
+    }
+
+    const verifyToken = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/auth/verify-reset-token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token })
+        });
+
+        if (!response.ok) {
+          setError('Reset link has expired or is invalid. Please request a new one.');
+        }
+      } catch (err) {
+        setError('Error verifying reset token.');
+      }
+    };
+
+    verifyToken();
+  }, [token]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setMessage('');
+
+    if (!newPassword || !confirmPassword) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, newPassword })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage('Password reset successful! Redirecting to login...');
+        setTimeout(() => navigate('/login'), 2000);
+      } else {
+        setError(data.message || 'Failed to reset password');
+      }
+    } catch (err) {
+      setError('Network error. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-madverse-dark flex items-center justify-center p-4">
+      <div className="max-w-md w-full">
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
+              <span className="text-black font-bold text-lg">M</span>
+            </div>
+          </div>
+          <h1 className="text-4xl font-bold font-display text-white mb-2">MADVERSE</h1>
+          <p className="text-gray-400 font-body">Create a new password</p>
+        </div>
+
+        <div className="bg-madverse-darker border border-gray-700 rounded-lg p-8 space-y-6">
+          {message && (
+            <div className="bg-green-500/20 border border-green-500 text-green-200 p-4 rounded font-body text-sm">
+              {message}
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-red-500/20 border border-red-500 text-red-200 p-4 rounded font-body text-sm">
+              {error}
+            </div>
+          )}
+
+          {!error && (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-gray-300 font-body text-sm mb-2">New Password</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-300 font-body text-sm mb-2">Confirm Password</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white font-body font-semibold py-3 rounded uppercase tracking-wide transition-colors"
+              >
+                {loading ? 'Resetting...' : 'Reset Password'}
+              </button>
+            </form>
+          )}
+
+          <p className="text-center text-gray-400 font-body text-sm">
+            <button
+              onClick={() => navigate('/login')}
+              className="text-purple-400 hover:text-purple-300 font-semibold transition-colors"
+            >
+              Back to login
+            </button>
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -2484,13 +2748,77 @@ function PaymentPage() {
 
     setLoading(true);
 
-    // Simulate Stripe confirmation in demo mode.
-    setTimeout(() => {
+    try {
+      // Process each item in basket as a separate purchase
+      let allTickets = [];
+      let purchaseId = null;
+      let eventTitle = null;
+
+      for (const item of basket) {
+        // Get the JWT token from localStorage
+        const token = localStorage.getItem('token');
+        
+        if (!token) {
+          throw new Error('Authentication required. Please log in first.');
+        }
+        
+        const purchaseResponse = await fetch(`${API_BASE}/purchases`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            eventId: item.eventId,
+            eventTitle: item.eventName,
+            ticketType: item.ticketType,
+            quantity: item.quantity,
+            email: email,
+            name: cardholderName
+          })
+        });
+
+        if (!purchaseResponse.ok) {
+          const errorData = await purchaseResponse.json();
+          throw new Error(errorData.message || 'Purchase failed');
+        }
+
+        const purchaseData = await purchaseResponse.json();
+        
+        // Collect all tickets from all purchases
+        if (purchaseData.tickets) {
+          allTickets = [...allTickets, ...purchaseData.tickets];
+        }
+        
+        // Keep the purchaseId from the last/first purchase for PDF download
+        if (!purchaseId) {
+          purchaseId = purchaseData.purchaseId;
+          eventTitle = purchaseData.eventTitle;
+        }
+
+        console.log('✅ Purchase successful:', purchaseData.purchaseId);
+      }
+
+      // Clear basket after all purchases succeed
       clearBasket();
       setLoading(false);
-      navigate('/events');
-      alert('Payment successful with Stripe. Your tickets are confirmed.');
-    }, 1200);
+
+      // Navigate to confirmation page with ticket data
+      navigate('/tickets/confirmation', {
+        state: {
+          tickets: allTickets,
+          eventTitle: eventTitle,
+          purchaseId: purchaseId,
+          purchaserEmail: email,
+          purchaserName: cardholderName
+        }
+      });
+
+    } catch (error) {
+      console.error('Payment error:', error);
+      setMessage(`Payment failed: ${error.message}. Please try again.`);
+      setLoading(false);
+    }
   };
 
   return (
@@ -2521,8 +2849,8 @@ function PaymentPage() {
       <div className="py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
           <div className="mb-10">
-            <h1 className="text-4xl md:text-5xl font-bold font-display text-white mb-2">Stripe Payment</h1>
-            <p className="text-gray-400 font-body">Complete your payment securely with card details.</p>
+            <h1 className="text-4xl md:text-5xl font-bold font-display text-white mb-2">Complete Your Purchase</h1>
+            <p className="text-gray-400 font-body">Enter your billing information and email to receive your tickets</p>
           </div>
 
           {basket.length === 0 ? (
@@ -2562,7 +2890,7 @@ function PaymentPage() {
                   </div>
 
                   <div>
-                    <label className="block text-gray-300 font-body text-sm mb-2">Email for receipt</label>
+                    <label className="block text-gray-300 font-body text-sm mb-2">Email for Your Tickets</label>
                     <input
                       type="email"
                       value={email}
@@ -2570,6 +2898,7 @@ function PaymentPage() {
                       className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-body focus:outline-none focus:border-purple-500 transition-colors"
                       placeholder="you@example.com"
                     />
+                    <p className="text-gray-500 text-xs mt-1">Your tickets and download link will be sent here</p>
                   </div>
 
                   <div>
@@ -2611,7 +2940,7 @@ function PaymentPage() {
                     disabled={loading}
                     className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white font-body font-bold py-3 rounded uppercase tracking-wide transition-colors mt-2"
                   >
-                    {loading ? 'Processing Payment...' : `Pay €${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    {loading ? 'Processing Your Purchase...' : `Complete Purchase & Get Tickets - €${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                   </button>
                 </form>
               </div>
@@ -3543,6 +3872,369 @@ function OurPartnersPage() {
   );
 }
 
+// Ticket Confirmation Page - Shows QR codes after purchase
+function TicketConfirmationPage() {
+  const navigate = useNavigate();
+  const [tickets, setTickets] = useState([]);
+  const [eventTitle, setEventTitle] = useState('');
+  const [purchaseId, setPurchaseId] = useState('');
+
+  useEffect(() => {
+    // Get tickets from location state (passed from checkout)
+    const state = window.location.state || {};
+    if (state.tickets) {
+      setTickets(state.tickets);
+      setEventTitle(state.eventTitle || 'Event');
+      setPurchaseId(state.purchaseId || '');
+    }
+  }, []);
+
+  const downloadQRCode = (qrCodeUrl, ticketCode) => {
+    const link = document.createElement('a');
+    link.href = qrCodeUrl;
+    link.download = `ticket-${ticketCode}.png`;
+    link.click();
+  };
+
+  const downloadPDF = () => {
+    if (!purchaseId) {
+      alert('PDF download information not available. Please check your email for the download link.');
+      return;
+    }
+    window.location.href = `/api/purchases/download/${purchaseId}`;
+  };
+
+  return (
+    <div className="min-h-screen bg-madverse-dark p-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-12">
+          <div className="text-6xl mb-4">✅</div>
+          <h1 className="text-4xl font-bold font-display text-white mb-2">Purchase Successful!</h1>
+          <p className="text-gray-400 font-body text-lg">Your tickets have been sent to your email</p>
+        </div>
+
+        {tickets.length > 0 && (
+          <div className="bg-madverse-darker border border-purple-500/50 rounded-lg p-8 mb-8">
+            <h2 className="text-2xl font-bold text-white mb-2 font-display">{eventTitle}</h2>
+            <p className="text-gray-400 mb-6 font-body">Total Tickets: {tickets.length}</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {tickets.map((ticket, idx) => (
+                <div key={idx} className="bg-madverse-dark border border-gray-700 rounded-lg p-6 flex flex-col items-center">
+                  <p className="text-sm text-gray-400 mb-2 font-body">Ticket {idx + 1}</p>
+                  <img
+                    src={ticket.qrCodeUrl}
+                    alt={`QR Code ${idx + 1}`}
+                    className="w-48 h-48 mb-4"
+                  />
+                  <p className="text-xs text-gray-500 text-center mb-4 font-mono">{ticket.ticketCode}</p>
+                  <div className="w-full space-y-2">
+                    <p className="text-sm text-gray-300 font-body"><strong>Type:</strong> {ticket.ticketType}</p>
+                    <button
+                      onClick={() => downloadQRCode(ticket.qrCodeUrl, ticket.ticketCode)}
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded font-body text-sm"
+                    >
+                      Download QR Code
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {purchaseId && (
+              <div className="mt-8 p-6 bg-green-500/10 border border-green-500/30 rounded-lg">
+                <h3 className="text-white font-bold mb-3 font-display">📥 Your PDF Ticket</h3>
+                <p className="text-gray-300 text-sm mb-4 font-body">
+                  Download your ticket as a PDF file. It contains your unique QR code for check-in.
+                </p>
+                <button
+                  onClick={downloadPDF}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded font-body font-semibold"
+                >
+                  📥 Download PDF Ticket
+                </button>
+              </div>
+            )}
+
+            <div className="mt-8 p-6 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+              <h3 className="text-white font-bold mb-3 font-display">Important:</h3>
+              <ul className="text-gray-300 text-sm space-y-2 font-body">
+                <li>✓ Take a screenshot or save the QR codes</li>
+                <li>✓ Download the PDF ticket for a complete record</li>
+                <li>✓ Bring your phone to the event or print the codes</li>
+                <li>✓ Staff will scan them for check-in</li>
+                <li>✓ You will receive a confirmation email shortly</li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-center gap-4">
+          <button
+            onClick={() => navigate('/events')}
+            className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded font-body font-semibold"
+          >
+            Browse More Events
+          </button>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded font-body font-semibold"
+          >
+            View Dashboard
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// QR Code Scanner Page - For event staff to check in attendees
+function ScannerPage() {
+  const navigate = useNavigate();
+  const [scannedCode, setScannedCode] = useState('');
+  const [scanHistory, setScanHistory] = useState([]);
+  const [manualInput, setManualInput] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [eventId] = useState('1'); // TODO: Get from params
+
+  const handleScan = async (code) => {
+    try {
+      const response = await fetch(`/api/purchases/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticketCode: code })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const scanRecord = {
+          code,
+          timestamp: new Date().toLocaleTimeString(),
+          status: 'success'
+        };
+        setScanHistory([scanRecord, ...scanHistory]);
+        setSuccessMessage(`✓ Ticket ${code} checked in!`);
+        setTimeout(() => setSuccessMessage(''), 3000);
+      }
+    } catch (error) {
+      console.error('Scan error:', error);
+    }
+  };
+
+  const handleManualInput = (e) => {
+    e.preventDefault();
+    if (manualInput.trim()) {
+      handleScan(manualInput);
+      setManualInput('');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-madverse-dark p-4">
+      <div className="max-w-2xl mx-auto">
+        <button
+          onClick={() => navigate(-1)}
+          className="text-purple-400 hover:text-purple-300 mb-4 font-body"
+        >
+          ← Back
+        </button>
+
+        <div className="bg-madverse-darker border border-gray-700 rounded-lg p-8">
+          <h1 className="text-3xl font-bold text-white mb-2 font-display">Check-In Scanner</h1>
+          <p className="text-gray-400 mb-8 font-body">Scan ticket QR codes for event check-in</p>
+
+          {successMessage && (
+            <div className="bg-green-500/20 border border-green-500 text-green-200 p-4 rounded mb-6 font-body">
+              {successMessage}
+            </div>
+          )}
+
+          {/* Manual Input (as fallback) */}
+          <form onSubmit={handleManualInput} className="mb-8">
+            <label className="block text-gray-300 font-body mb-2">Or enter ticket code manually:</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={manualInput}
+                onChange={(e) => setManualInput(e.target.value.toUpperCase())}
+                placeholder="Enter ticket code..."
+                className="flex-1 bg-madverse-dark border border-gray-700 text-white px-4 py-3 rounded font-mono focus:outline-none focus:border-purple-500"
+              />
+              <button
+                type="submit"
+                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded font-body font-semibold"
+              >
+                Check In
+              </button>
+            </div>
+          </form>
+
+          {/* Scan History */}
+          <div className="bg-madverse-dark rounded-lg p-6">
+            <h2 className="text-xl font-bold text-white mb-4 font-display">Scan History ({scanHistory.length})</h2>
+            {scanHistory.length > 0 ? (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {scanHistory.map((scan, idx) => (
+                  <div key={idx} className="flex justify-between items-center p-3 bg-madverse-darker border border-gray-700 rounded">
+                    <span className="font-mono text-gray-300 text-sm">{scan.code}</span>
+                    <span className="text-gray-400 text-xs font-body">{scan.timestamp}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-8 font-body">No scans yet</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Inventory Dashboard - Shows available and sold tickets
+function InventoryPage() {
+  const navigate = useNavigate();
+  const [inventory, setInventory] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [eventId] = useState('1'); // TODO: Get from params
+
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        const response = await fetch(`/api/purchases/inventory/${eventId}`);
+        const data = await response.json();
+        setInventory(data);
+      } catch (error) {
+        console.error('Error fetching inventory:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInventory();
+  }, [eventId]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-madverse-dark flex items-center justify-center">
+        <p className="text-white font-body">Loading inventory...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-madverse-dark p-8">
+      <div className="max-w-6xl mx-auto">
+        <button
+          onClick={() => navigate(-1)}
+          className="text-purple-400 hover:text-purple-300 mb-4 font-body"
+        >
+          ← Back
+        </button>
+
+        {inventory && (
+          <>
+            {/* Header Stats */}
+            <div className="mb-8">
+              <h1 className="text-4xl font-bold text-white mb-2 font-display">{inventory.eventTitle}</h1>
+              <p className="text-gray-400 font-body">Ticket Availability Overview</p>
+            </div>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              <div className="bg-madverse-darker border border-purple-500/30 rounded-lg p-6">
+                <p className="text-gray-400 text-sm font-body">Total Capacity</p>
+                <p className="text-3xl font-bold text-white font-display">{inventory.totalCapacity}</p>
+              </div>
+              <div className="bg-madverse-darker border border-green-500/30 rounded-lg p-6">
+                <p className="text-gray-400 text-sm font-body">Tickets Sold</p>
+                <p className="text-3xl font-bold text-green-400 font-display">{inventory.totalSold}</p>
+              </div>
+              <div className="bg-madverse-darker border border-orange-500/30 rounded-lg p-6">
+                <p className="text-gray-400 text-sm font-body">Available</p>
+                <p className="text-3xl font-bold text-orange-400 font-display">{inventory.totalAvailable}</p>
+              </div>
+              <div className="bg-madverse-darker border border-blue-500/30 rounded-lg p-6">
+                <p className="text-gray-400 text-sm font-body">Checked In</p>
+                <p className="text-3xl font-bold text-blue-400 font-display">{inventory.totalCheckedIn}</p>
+              </div>
+            </div>
+
+            {/* Ticket Types Detail */}
+            <div className="bg-madverse-darker border border-gray-700 rounded-lg overflow-hidden">
+              <div className="bg-madverse-dark px-6 py-4 border-b border-gray-700">
+                <h2 className="text-xl font-bold text-white font-display">Ticket Types</h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm font-body">
+                  <thead className="bg-madverse-dark border-b border-gray-700">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-gray-300">Type</th>
+                      <th className="px-6 py-4 text-center text-gray-300">Price</th>
+                      <th className="px-6 py-4 text-center text-gray-300">Total</th>
+                      <th className="px-6 py-4 text-center text-gray-300">Sold</th>
+                      <th className="px-6 py-4 text-center text-gray-300">Available</th>
+                      <th className="px-6 py-4 text-center text-gray-300">Checked In</th>
+                      <th className="px-6 py-4 text-center text-gray-300">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inventory.ticketTypes.map((type) => {
+                      const soldPercent = Math.round((type.sold / type.total) * 100);
+                      const availablePercent = Math.round((type.available / type.total) * 100);
+
+                      return (
+                        <tr key={type.type} className="border-b border-gray-700 hover:bg-madverse-dark/50">
+                          <td className="px-6 py-4 text-white font-semibold">{type.name}</td>
+                          <td className="px-6 py-4 text-center text-gray-300">€{type.price}</td>
+                          <td className="px-6 py-4 text-center text-gray-300">{type.total}</td>
+                          <td className="px-6 py-4 text-center text-green-400">{type.sold}</td>
+                          <td className="px-6 py-4 text-center text-orange-400">{type.available}</td>
+                          <td className="px-6 py-4 text-center text-blue-400">{type.checkedIn}</td>
+                          <td className="px-6 py-4 text-center">
+                            <div className="w-full bg-gray-700 rounded-full h-2" title={`${soldPercent}% sold`}>
+                              <div
+                                className="bg-gradient-to-r from-green-500 to-orange-500 h-2 rounded-full"
+                                style={{ width: `${soldPercent}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-xs text-gray-400 mt-1">{soldPercent}%</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-green-400 rounded"></div>
+                <span className="text-sm text-gray-400 font-body">Sold</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-orange-400 rounded"></div>
+                <span className="text-sm text-gray-400 font-body">Available</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-blue-400 rounded"></div>
+                <span className="text-sm text-gray-400 font-body">Checked In</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-purple-400 rounded"></div>
+                <span className="text-sm text-gray-400 font-body">Pending</span>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <Routes>
@@ -3564,7 +4256,12 @@ export default function App() {
       />
       <Route path="/checkout" element={<CheckoutPage />} />
       <Route path="/payment" element={<PaymentPage />} />
+      <Route path="/tickets/confirmation" element={<TicketConfirmationPage />} />
+      <Route path="/scanner" element={<ProtectedRoute requireAdmin={true}><ScannerPage /></ProtectedRoute>} />
+      <Route path="/inventory" element={<ProtectedRoute requireAdmin={true}><InventoryPage /></ProtectedRoute>} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

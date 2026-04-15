@@ -20,6 +20,8 @@ export const jwtConfig = {
 };
 
 export const emailConfig = {
-  apiKey: process.env.MAILTRAP_API_KEY || 'your-mailtrap-api-key',
-  recipientEmail: process.env.RECIPIENT_EMAIL || 'info@madverse.com'
+  emailUser: process.env.EMAIL_USER || 'your-email@gmail.com',
+  emailPassword: process.env.EMAIL_PASSWORD || 'your-app-password'
 };
+
+export const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';

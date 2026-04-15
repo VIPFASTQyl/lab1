@@ -10,6 +10,7 @@ import extrasRoutes from './routes-extras.js';
 import relationsRoutes from './routes-relations.js';
 import contactRoutes from './routes-contact.js';
 import partnersRoutes from './routes-partners.js';
+import purchasesRoutes from './routes-purchases.js';
 import Stripe from 'stripe';
 import 'dotenv/config';
 
@@ -84,6 +85,9 @@ app.use('/api/relations', relationsRoutes);
 
 // Partners Management
 app.use('/api/partners', partnersRoutes);
+
+// Ticket Purchases & QR Codes
+app.use('/api/purchases', purchasesRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: 'Not found' });
