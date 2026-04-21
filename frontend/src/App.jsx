@@ -64,9 +64,13 @@ function useEvents() {
             id: event.EventId,
             name: event.Title,
             description: event.Description,
+            category: event.Category,
             price: event.Price,
             date: event.EventDate,
+            startTime: event.StartTime,
+            endTime: event.EndTime,
             venue: event.VenueId,
+            status: event.Status,
             availableTickets: event.AvailableTickets
           };
         });
@@ -114,9 +118,13 @@ function useEvents() {
           id: e.EventId,
           name: e.Title,
           description: e.Description,
+          category: e.Category,
           price: e.Price,
           date: e.EventDate,
+          startTime: e.StartTime,
+          endTime: e.EndTime,
           venue: e.VenueId,
+          status: e.Status,
           availableTickets: e.AvailableTickets
         };
       });
@@ -155,9 +163,13 @@ function useEvents() {
           id: e.EventId,
           name: e.Title,
           description: e.Description,
+          category: e.Category,
           price: e.Price,
           date: e.EventDate,
+          startTime: e.StartTime,
+          endTime: e.EndTime,
           venue: e.VenueId,
+          status: e.Status,
           availableTickets: e.AvailableTickets
         };
       });
@@ -191,9 +203,13 @@ function useEvents() {
           id: e.EventId,
           name: e.Title,
           description: e.Description,
+          category: e.Category,
           price: e.Price,
           date: e.EventDate,
+          startTime: e.StartTime,
+          endTime: e.EndTime,
           venue: e.VenueId,
+          status: e.Status,
           availableTickets: e.AvailableTickets
         };
       });
@@ -858,16 +874,18 @@ function DashboardPage() {
     setTimeout(() => setNotification(null), 3000);
   };
 
+  const [venues, setVenues] = useState([]);
+  const [categories] = useState(['Music', 'Theater', 'Comedy', 'Festival', 'Conference', 'Sports', 'Other']);
+  
   const [formData, setFormData] = useState({ 
-    name: '', 
-    description: '', 
-    image: null, 
-    imagePreview: null,
-    ticketTypes: {
-      vip: { name: 'VIP', enabled: false, price: '', stock: '' },
-      group: { name: 'Group of 4', enabled: false, price: '', stock: '' },
-      standard: { name: 'Standard', enabled: false, price: '', stock: '' }
-    }
+    Title: '', 
+    Description: '', 
+    Category: '',
+    EventDate: '',
+    StartTime: '',
+    EndTime: '',
+    VenueId: '',
+    Status: 'Upcoming'
   });
   
   // Object Map states
@@ -891,6 +909,15 @@ function DashboardPage() {
     async function loadDashboard() {
       try {
         const token = getToken();
+        
+        // Fetch venues
+        const venuesRes = await fetch(`${API_BASE}/events/venues`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (venuesRes.ok) {
+          const venuesData = await venuesRes.json();
+          setVenues(venuesData);
+        }
         
         // Fetch summary data
         const summaryRes = await fetch(`${API_BASE}/dashboard/summary`, {
@@ -1036,30 +1063,27 @@ function DashboardPage() {
   const handleOpenModal = (eventId = null) => {
     if (eventId && events[eventId]) {
       const event = events[eventId];
-      const ticketTypes = {
-        vip: { name: 'VIP', enabled: !!event.ticketTypes?.vip?.price, price: event.ticketTypes?.vip?.price || '', stock: event.ticketTypes?.vip?.stock || '' },
-        group: { name: 'Group of 4', enabled: !!event.ticketTypes?.group?.price, price: event.ticketTypes?.group?.price || '', stock: event.ticketTypes?.group?.stock || '' },
-        standard: { name: 'Standard', enabled: !!event.ticketTypes?.standard?.price, price: event.ticketTypes?.standard?.price || '', stock: event.ticketTypes?.standard?.stock || '' }
-      };
       setFormData({
-        name: event.name,
-        description: event.description,
-        image: event.image || null,
-        imagePreview: event.image || null,
-        ticketTypes
+        Title: event.name || '',
+        Description: event.description || '',
+        Category: event.category || '',
+        EventDate: event.date || '',
+        StartTime: event.startTime || '',
+        EndTime: event.endTime || '',
+        VenueId: event.venue || '',
+        Status: event.status || 'Upcoming'
       });
       setEditingEventId(eventId);
     } else {
       setFormData({ 
-        name: '', 
-        description: '', 
-        image: null, 
-        imagePreview: null,
-        ticketTypes: {
-          vip: { name: 'VIP', enabled: false, price: '', stock: '' },
-          group: { name: 'Group of 4', enabled: false, price: '', stock: '' },
-          standard: { name: 'Standard', enabled: false, price: '', stock: '' }
-        }
+        Title: '', 
+        Description: '', 
+        Category: '',
+        EventDate: '',
+        StartTime: '',
+        EndTime: '',
+        VenueId: '',
+        Status: 'Upcoming'
       });
       setEditingEventId(null);
     }
@@ -1069,88 +1093,47 @@ function DashboardPage() {
   const handleCloseModal = () => {
     setShowEventModal(false);
     setFormData({ 
-      name: '', 
-      description: '', 
-      image: null, 
-      imagePreview: null,
-      ticketTypes: {
-        vip: { name: 'VIP', enabled: false, price: '', stock: '' },
-        group: { name: 'Group of 4', enabled: false, price: '', stock: '' },
-        standard: { name: 'Standard', enabled: false, price: '', stock: '' }
-      }
+      Title: '', 
+      Description: '', 
+      Category: '',
+      EventDate: '',
+      StartTime: '',
+      EndTime: '',
+      VenueId: '',
+      Status: 'Upcoming'
     });
     setEditingEventId(null);
   };
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData({ ...formData, image: reader.result, imagePreview: reader.result });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSaveEvent = () => {
-    if (!formData.name || !formData.description) {
-      showNotification('Please fill in event name and description', 'error');
+  const handleSaveEvent = async () => {
+    if (!formData.Title || !formData.Description || !formData.Category || !formData.EventDate || !formData.VenueId) {
+      showNotification('Please fill in all required fields', 'error');
       return;
     }
-
-    // Check if at least one ticket type is enabled
-    const enabledTypes = Object.values(formData.ticketTypes).filter(t => t.enabled);
-    if (enabledTypes.length === 0) {
-      showNotification('Please enable at least one ticket type', 'error');
-      return;
-    }
-
-    // Validate ticket type prices and stock
-    for (const type of enabledTypes) {
-      if (!type.price || type.price <= 0) {
-        showNotification(`Please enter a valid price for ${type.name}`, 'error');
-        return;
-      }
-      if (!type.stock || type.stock <= 0) {
-        showNotification(`Please enter valid stock for ${type.name}`, 'error');
-        return;
-      }
-    }
-
-    // Build ticket types object
-    const ticketTypes = {};
-    for (const [key, type] of Object.entries(formData.ticketTypes)) {
-      if (type.enabled) {
-        ticketTypes[key] = {
-          name: type.name,
-          price: parseFloat(type.price),
-          stock: parseInt(type.stock),
-          available: parseInt(type.stock)
-        };
-      }
-    }
-
-    // Calculate base price from ticket types (lowest price)
-    const basePrice = Math.min(...enabledTypes.map(t => parseFloat(t.price)));
 
     const eventData = {
-      name: formData.name,
-      price: basePrice,
-      zones: [], // Empty zones - pricing comes from ticket types
-      description: formData.description,
-      image: formData.image || null,
-      ticketTypes
+      Title: formData.Title,
+      Description: formData.Description,
+      Category: formData.Category,
+      EventDate: formData.EventDate,
+      StartTime: formData.StartTime || null,
+      EndTime: formData.EndTime || null,
+      VenueId: formData.VenueId,
+      Status: formData.Status
     };
 
-    if (editingEventId) {
-      updateEvent(editingEventId, eventData);
-      showNotification('Event updated successfully');
-    } else {
-      addEvent(eventData);
-      showNotification('Event created successfully');
+    try {
+      if (editingEventId) {
+        await updateEvent(editingEventId, eventData);
+        showNotification('Event updated successfully');
+      } else {
+        await addEvent(eventData);
+        showNotification('Event created successfully');
+      }
+      handleCloseModal();
+    } catch (err) {
+      showNotification(err.message || 'Failed to save event', 'error');
     }
-    handleCloseModal();
   };
 
   const handleDeleteEvent = (id) => {
@@ -1242,6 +1225,13 @@ function DashboardPage() {
   return (
     <div className="min-h-screen bg-madverse-dark py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
+        {/* Notification Toast */}
+        {notification && (
+          <div className={`fixed top-4 right-4 p-4 rounded-lg text-white font-body flex items-center gap-3 z-50 ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+            {notification.type === 'success' ? '✓' : '✕'} {notification.message}
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold font-display text-white mb-2">Admin Dashboard</h1>
@@ -1372,18 +1362,19 @@ function DashboardPage() {
               <thead>
                 <tr className="bg-madverse-dark border-b border-gray-700">
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Event Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Ticket Types</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Category</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Description</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {Object.entries(events).map(([id, event]) => {
-                  const ticketTypesList = event.ticketTypes ? Object.values(event.ticketTypes).map(t => `${t.name} €${t.price}`).join(', ') : 'No types';
                   return (
                     <tr key={id} className="border-b border-gray-700 hover:bg-madverse-darker/50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-white">{event.name}</td>
-                      <td className="px-6 py-4 text-sm text-yellow-400 font-semibold">{ticketTypesList}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{event.date ? new Date(event.date).toLocaleDateString() : '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-purple-400">{event.category || '-'}</td>
                       <td className="px-6 py-4 text-sm text-gray-400 truncate">{event.description}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex gap-2 flex-wrap">
@@ -1392,13 +1383,6 @@ function DashboardPage() {
                             className="bg-blue-600 hover:bg-blue-700 text-white font-body text-xs py-1 px-3 rounded transition-colors"
                           >
                             Edit
-                          </button>
-                          <button
-                            onClick={() => openObjectMapEditor(id)}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-body text-xs py-1 px-3 rounded transition-colors"
-                            title="Configure seating map"
-                          >
-                            🎪 Map
                           </button>
                         <button
                           onClick={() => setDeleteConfirmId(id)}
@@ -1444,106 +1428,108 @@ function DashboardPage() {
               </h2>
 
               <div className="space-y-4 mb-6">
+                {/* Title */}
                 <div>
-                  <label className="block text-gray-300 font-body text-sm mb-2">Event Name</label>
+                  <label className="block text-gray-300 font-body text-sm mb-2">Event Title *</label>
                   <input
                     type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    value={formData.Title}
+                    onChange={(e) => setFormData({ ...formData, Title: e.target.value })}
                     className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-2 rounded font-body focus:outline-none focus:border-purple-500"
                     placeholder="e.g., ANA CARLA MAZA"
                   />
                 </div>
 
+                {/* Description */}
                 <div>
-                  <label className="block text-gray-300 font-body text-sm mb-2">Description</label>
+                  <label className="block text-gray-300 font-body text-sm mb-2">Description *</label>
                   <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    value={formData.Description}
+                    onChange={(e) => setFormData({ ...formData, Description: e.target.value })}
                     className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-2 rounded font-body focus:outline-none focus:border-purple-500"
                     placeholder="e.g., Ana Carla Maza Live"
                     rows={3}
                   />
                 </div>
 
-                {/* Ticket Types Management */}
-                <div className="bg-madverse-dark border border-gray-700 rounded-lg p-4">
-                  <label className="block text-gray-300 font-body text-sm mb-4 font-semibold">Ticket Types</label>
-                  <div className="space-y-3">
-                    {Object.entries(formData.ticketTypes).map(([key, type]) => (
-                      <div key={key} className="p-3 border border-gray-700 rounded bg-black/30">
-                        <div className="flex items-center gap-3 mb-3">
-                          <input
-                            type="checkbox"
-                            checked={type.enabled}
-                            onChange={(e) => setFormData({
-                              ...formData,
-                              ticketTypes: {
-                                ...formData.ticketTypes,
-                                [key]: { ...type, enabled: e.target.checked }
-                              }
-                            })}
-                            className="w-4 h-4 cursor-pointer"
-                          />
-                          <span className="text-white font-body font-semibold">{type.name}</span>
-                        </div>
-
-                        {type.enabled && (
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <label className="text-gray-400 font-body text-xs mb-1 block">Price (€)</label>
-                              <input
-                                type="number"
-                                value={type.price}
-                                onChange={(e) => setFormData({
-                                  ...formData,
-                                  ticketTypes: {
-                                    ...formData.ticketTypes,
-                                    [key]: { ...type, price: e.target.value }
-                                  }
-                                })}
-                                className="w-full bg-madverse-dark border border-gray-600 text-white px-2 py-1 rounded text-sm font-body focus:outline-none focus:border-purple-500"
-                                placeholder="e.g., 500"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-gray-400 font-body text-xs mb-1 block">Stock</label>
-                              <input
-                                type="number"
-                                value={type.stock}
-                                onChange={(e) => setFormData({
-                                  ...formData,
-                                  ticketTypes: {
-                                    ...formData.ticketTypes,
-                                    [key]: { ...type, stock: e.target.value }
-                                  }
-                                })}
-                                className="w-full bg-madverse-dark border border-gray-600 text-white px-2 py-1 rounded text-sm font-body focus:outline-none focus:border-purple-500"
-                                placeholder="e.g., 20"
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                {/* Category */}
+                <div>
+                  <label className="block text-gray-300 font-body text-sm mb-2">Category *</label>
+                  <select
+                    value={formData.Category}
+                    onChange={(e) => setFormData({ ...formData, Category: e.target.value })}
+                    className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-2 rounded font-body focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="">Select a category</option>
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
                     ))}
+                  </select>
+                </div>
+
+                {/* Event Date */}
+                <div>
+                  <label className="block text-gray-300 font-body text-sm mb-2">Event Date *</label>
+                  <input
+                    type="date"
+                    value={formData.EventDate}
+                    onChange={(e) => setFormData({ ...formData, EventDate: e.target.value })}
+                    className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-2 rounded font-body focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+
+                {/* Start and End Time */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-gray-300 font-body text-sm mb-2">Start Time</label>
+                    <input
+                      type="time"
+                      value={formData.StartTime}
+                      onChange={(e) => setFormData({ ...formData, StartTime: e.target.value })}
+                      className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-2 rounded font-body focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-300 font-body text-sm mb-2">End Time</label>
+                    <input
+                      type="time"
+                      value={formData.EndTime}
+                      onChange={(e) => setFormData({ ...formData, EndTime: e.target.value })}
+                      className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-2 rounded font-body focus:outline-none focus:border-purple-500"
+                    />
                   </div>
                 </div>
 
+                {/* Venue */}
                 <div>
-                  <label className="block text-gray-300 font-body text-sm mb-2">Event Image</label>
-                  <div className="space-y-3">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="w-full bg-madverse-dark border border-gray-700 text-gray-400 px-4 py-2 rounded font-body focus:outline-none focus:border-purple-500"
-                    />
-                    {formData.imagePreview && (
-                      <div className="relative w-full h-48 rounded overflow-hidden border border-gray-700">
-                        <img src={formData.imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                      </div>
-                    )}
-                  </div>
+                  <label className="block text-gray-300 font-body text-sm mb-2">Venue *</label>
+                  <select
+                    value={formData.VenueId}
+                    onChange={(e) => setFormData({ ...formData, VenueId: e.target.value })}
+                    className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-2 rounded font-body focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="">Select a venue</option>
+                    {venues.map(venue => (
+                      <option key={venue.VenueId} value={venue.VenueId}>
+                        {venue.Name} - {venue.City}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className="block text-gray-300 font-body text-sm mb-2">Status</label>
+                  <select
+                    value={formData.Status}
+                    onChange={(e) => setFormData({ ...formData, Status: e.target.value })}
+                    className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-2 rounded font-body focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="Upcoming">Upcoming</option>
+                    <option value="Ongoing">Ongoing</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
                 </div>
               </div>
 
