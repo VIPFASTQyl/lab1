@@ -211,7 +211,7 @@ router.delete('/sectors/:id', async (req, res) => {
 // ===========================
 
 // GET all events
-router.get('/events', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const db = await getDbPool();
     const events = await db.all('SELECT * FROM Events ORDER BY EventDate DESC');
@@ -223,7 +223,7 @@ router.get('/events', async (req, res) => {
 });
 
 // GET event by ID
-router.get('/events/:id', async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const db = await getDbPool();
     const { id } = req.params;
@@ -240,7 +240,7 @@ router.get('/events/:id', async (req, res) => {
 });
 
 // POST create new event
-router.post('/events', async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const db = await getDbPool();
     const { Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status } = req.body;
@@ -262,7 +262,7 @@ router.post('/events', async (req, res) => {
 });
 
 // PUT update event
-router.put('/events/:id', async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const db = await getDbPool();
     const { id } = req.params;
@@ -284,7 +284,7 @@ router.put('/events/:id', async (req, res) => {
 });
 
 // DELETE event
-router.delete('/events/:id', async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const db = await getDbPool();
     const { id } = req.params;

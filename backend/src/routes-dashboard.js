@@ -89,10 +89,10 @@ router.get('/events', async (req, res) => {
         e.Title as eventName,
         COUNT(t.TicketId) as totalCapacity,
         SUM(CASE WHEN t.Status = 'Sold' THEN 1 ELSE 0 END) as ticketsSold,
-        SUM(CASE WHEN od.OrderId IS NOT NULL THEN od.TotalPrice ELSE 0 END) as revenue
+        COALESCE(SUM(od.Quantity * od.UnitPrice), 0) as revenue
       FROM Events e
       LEFT JOIN Tickets t ON e.EventId = t.EventId
-      LEFT JOIN OrderDetails od ON t.TicketId = od.TicketId
+      LEFT JOIN OrderDetails od ON e.EventId = od.EventId
       GROUP BY e.EventId, e.Title
       ORDER BY e.EventId`
     );
