@@ -44,18 +44,18 @@ router.get('/venues/:id', async (req, res) => {
 router.post('/venues', async (req, res) => {
   try {
     const db = await getDbPool();
-    const { Name, Address, City, Capacity, Phone, Email, Description } = req.body;
+    const { Name, Country, City, Capacity } = req.body;
     
-    if (!Name || !Address || !City || !Capacity) {
-      return res.status(400).json({ message: 'Name, Address, City, and Capacity are required' });
+    if (!Name || !City) {
+      return res.status(400).json({ message: 'Name and City are required' });
     }
 
     const result = await db.run(
-      'INSERT INTO Venues (Name, Address, City, Capacity, Phone, Email, Description) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [Name, Address, City, Capacity, Phone || null, Email || null, Description || null]
+      'INSERT INTO Venues (Name, City, Country, Capacity) VALUES (?, ?, ?, ?)',
+      [Name, City, Country || 'Unknown', Capacity || 1000]
     );
     
-    res.status(201).json({ VenueId: result.lastID, Name, Address, City, Capacity, Phone, Email, Description });
+    res.status(201).json({ VenueId: result.lastID, Name, City, Country: Country || 'Unknown', Capacity: Capacity || 1000 });
   } catch (error) {
     console.error('Error creating venue:', error);
     res.status(500).json({ message: 'Error creating venue',error: error.message });
@@ -245,13 +245,13 @@ router.post('/', async (req, res) => {
     const db = await getDbPool();
     const { Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status } = req.body;
     
-    if (!Title || !Category || !EventDate || !VenueId) {
-      return res.status(400).json({ message: 'Title, Category, EventDate, and VenueId are required' });
+    if (!Title || !EventDate || !VenueId) {
+      return res.status(400).json({ message: 'Title, EventDate, and VenueId are required' });
     }
 
     const result = await db.run(
-      'INSERT INTO Events (Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [Title, Description || null, Category, EventDate, StartTime || null, EndTime || null, VenueId, Status || 'Upcoming']
+      'INSERT INTO Events (Title, Description, EventDate, VenueId) VALUES (?, ?, ?, ?)',
+      [Title, Description || null, EventDate, VenueId]
     );
     
     res.status(201).json({ EventId: result.lastID, Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status });
@@ -266,11 +266,11 @@ router.put('/:id', async (req, res) => {
   try {
     const db = await getDbPool();
     const { id } = req.params;
-    const { Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status } = req.body;
+    const { Title, Description, EventDate, VenueId } = req.body;
 
     const result = await db.run(
-      'UPDATE Events SET Title = ?, Description = ?, Category = ?, EventDate = ?, StartTime = ?, EndTime = ?, VenueId = ?, Status = ? WHERE EventId = ?',
-      [Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status, id]
+      'UPDATE Events SET Title = ?, Description = ?, EventDate = ?, VenueId = ? WHERE EventId = ?',
+      [Title, Description, EventDate, VenueId, id]
     );
 
     if (result.changes === 0) {

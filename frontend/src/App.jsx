@@ -1111,6 +1111,46 @@ function DashboardPage() {
       return;
     }
 
+    let finalVenueId = formData.VenueId;
+
+    // Check if the VenueId is a string description instead of a numeric ID
+    if (isNaN(finalVenueId)) {
+      try {
+        const venueRes = await fetch(`${API_BASE}/events/venues`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(localStorage.getItem('token') && { Authorization: `Bearer ${localStorage.getItem('token')}` })
+          },
+          body: JSON.stringify({
+            Name: formData.VenueId.substring(0, 50) || 'Custom Venue',
+            Description: formData.VenueId,
+            Address: formData.VenueId.substring(0, 50) || 'Custom Address',
+            City: 'Unknown',
+            Capacity: 1000 // Default placeholder
+          })
+        });
+        if (!venueRes.ok) {
+          throw new Error('Failed to create custom venue');
+        }
+        const venueData = await venueRes.json();
+        finalVenueId = venueData.VenueId;
+        
+        // Refresh venues list in background so it appears later if needed
+        fetch(`${API_BASE}/events/venues`, {
+          headers: {
+            ...(localStorage.getItem('token') && { Authorization: `Bearer ${localStorage.getItem('token')}` })
+          }
+        })
+          .then(res => res.json())
+          .then(data => setVenues(data))
+          .catch(e => console.error('Error refreshing venues:', e));
+      } catch (err) {
+        showNotification(err.message || 'Failed to process custom venue', 'error');
+        return;
+      }
+    }
+
     const eventData = {
       Title: formData.Title,
       Description: formData.Description,
@@ -1118,7 +1158,7 @@ function DashboardPage() {
       EventDate: formData.EventDate,
       StartTime: formData.StartTime || null,
       EndTime: formData.EndTime || null,
-      VenueId: formData.VenueId,
+      VenueId: finalVenueId,
       Status: formData.Status
     };
 
@@ -1502,19 +1542,14 @@ function DashboardPage() {
 
                 {/* Venue */}
                 <div>
-                  <label className="block text-gray-300 font-body text-sm mb-2">Venue *</label>
-                  <select
+                  <label className="block text-gray-300 font-body text-sm mb-2">Venue (Open-ended Description) *</label>
+                  <textarea
                     value={formData.VenueId}
                     onChange={(e) => setFormData({ ...formData, VenueId: e.target.value })}
                     className="w-full bg-madverse-dark border border-gray-700 text-white px-4 py-2 rounded font-body focus:outline-none focus:border-purple-500"
-                  >
-                    <option value="">Select a venue</option>
-                    {venues.map(venue => (
-                      <option key={venue.VenueId} value={venue.VenueId}>
-                        {venue.Name} - {venue.City}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Describe the venue details..."
+                    rows={3}
+                  />
                 </div>
 
                 {/* Status */}
