@@ -13,8 +13,10 @@ export function authMiddleware(req, res, next) {
   try {
     const payload = jwt.verify(token, jwtConfig.secret);
     req.user = payload;
+    req.userId = payload.userId || payload.id;
     next();
   } catch (err) {
+    console.error('Token verification failed:', err.message);
     return res.status(401).json({ message: 'Invalid or expired token' });
   }
 }

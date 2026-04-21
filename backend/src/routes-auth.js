@@ -65,6 +65,7 @@ router.post('/register', async (req, res) => {
     const token = jwt.sign(
       {
         userId: result.lastID,
+        id: result.lastID,
         name: firstName,
         email: email,
         isAdmin: isAdmin === 1
@@ -107,6 +108,7 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign(
       {
         userId: user.Id,
+        id: user.Id,
         name: user.FirstName,
         email: user.Email,
         isAdmin: user.IsAdmin === 1
