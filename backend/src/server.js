@@ -1,6 +1,7 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { PORT } from './config.js';
+import { PORT, stripeConfig, frontendUrl } from './config.js';
 import './db.js';
 import authRoutes from './routes-auth.js';
 import dashboardRoutes from './routes-dashboard.js';
@@ -12,9 +13,12 @@ import contactRoutes from './routes-contact.js';
 import partnersRoutes from './routes-partners.js';
 import purchasesRoutes from './routes-purchases.js';
 import Stripe from 'stripe';
-import 'dotenv/config';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'YOUR_STRIPE_SECRET_KEY_HERE');
+if (!stripeConfig.secretKey) {
+  console.error('❌ STRIPE_SECRET_KEY is not configured in .env file');
+}
+
+const stripe = new Stripe(stripeConfig.secretKey);
 
 const app = express();
 
@@ -34,10 +38,18 @@ app.post('/api/create-checkout-session', async (req, res) => {
   try {
     const { basket } = req.body;
     
+    if (!basket || basket.length === 0) {
+      return res.status(400).json({ error: 'Basket is empty' });
+    }
+    
     // Convert basket items to Stripe line items
     const line_items = basket.map(item => {
       // In a real application, fetch the actual price from the DB here using item.ticketType and item.eventId!
-      const amountInCents = Math.round(item.total * 100); 
+      const amountInCents = Math.round(item.total * 100);
+      
+      if (amountInCents < 1) {
+        throw new Error(`Invalid amount for item: ${item.eventName}`);
+      }
 
       return {
         price_data: {
@@ -55,14 +67,23 @@ app.post('/api/create-checkout-session', async (req, res) => {
       payment_method_types: ['card'],
       line_items: line_items,
       mode: 'payment',
-      success_url: 'http://localhost:3000/success',
-      cancel_url: 'http://localhost:3000/cancel',
+      success_url: `${frontendUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${frontendUrl}/cancel`,
     });
 
     res.json({ url: session.url });
   } catch (error) {
+    console.error('Stripe session creation error:', error);
     res.status(500).json({ error: error.message });
   }
+});
+
+// Stripe Config endpoint for frontend
+app.get('/api/stripe-config', (req, res) => {
+  if (!stripeConfig.publishableKey) {
+    return res.status(500).json({ error: 'Stripe publishable key not configured' });
+  }
+  res.json({ publishableKey: stripeConfig.publishableKey });
 });
 
 // Contact Form

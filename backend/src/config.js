@@ -25,3 +25,8 @@ export const emailConfig = {
 };
 
 export const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+export const stripeConfig = {
+  secretKey: process.env.STRIPE_SECRET_KEY,
+  publishableKey: process.env.STRIPE_PUBLISHABLE_KEY
+};

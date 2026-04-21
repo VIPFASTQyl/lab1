@@ -4235,6 +4235,137 @@ function InventoryPage() {
   );
 }
 
+// Stripe Payment Success Page
+function SuccessPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sessionId = searchParams.get('session_id');
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-madverse-dark to-madverse-darker flex items-center justify-center px-4">
+      <div className="max-w-2xl w-full">
+        {/* Success Card */}
+        <div className="bg-madverse-darker border border-green-500/50 rounded-2xl p-8 md:p-12 text-center">
+          {/* Success Icon */}
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-green-500/20 border border-green-500 rounded-full mb-6">
+            <svg className="w-10 h-10 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2 font-display">Payment Successful! 🎉</h1>
+          <p className="text-gray-400 text-lg font-body mb-2">Your payment has been processed successfully</p>
+          
+          {sessionId && (
+            <p className="text-gray-500 text-sm font-body mb-6">
+              Session ID: <code className="bg-gray-900 px-2 py-1 rounded text-green-400">{sessionId.slice(0, 20)}...</code>
+            </p>
+          )}
+
+          <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-6 mb-8 text-left">
+            <h3 className="text-white font-bold mb-4 font-display">Next Steps:</h3>
+            <ul className="space-y-3 text-gray-300 font-body">
+              <li className="flex items-start gap-3">
+                <span className="text-green-400 mt-1">✓</span>
+                <span>Check your email for ticket confirmation and PDF</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-green-400 mt-1">✓</span>
+                <span>Download and keep your QR code safe</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-green-400 mt-1">✓</span>
+                <span>Show your tickets at the event entrance</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-green-400 mt-1">✓</span>
+                <span>Your account has been credited with your tickets</span>
+              </li>
+            </ul>
+          </div>
+
+          <button
+            onClick={() => navigate('/tickets')}
+            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg uppercase tracking-wide transition-colors mb-3"
+          >
+            View My Tickets
+          </button>
+
+          <button
+            onClick={() => navigate('/')}
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg uppercase tracking-wide transition-colors"
+          >
+            Back to Home
+          </button>
+        </div>
+
+        {/* Support Section */}
+        <div className="mt-8 text-center">
+          <p className="text-gray-400 font-body mb-3">Need help?</p>
+          <a href="mailto:support@madverse.com" className="text-purple-400 hover:text-purple-300 font-body">
+            Contact Support →
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Stripe Payment Cancelled Page
+function CancelPage() {
+  const navigate = useNavigate();
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-madverse-dark to-madverse-darker flex items-center justify-center px-4">
+      <div className="max-w-2xl w-full">
+        {/* Cancel Card */}
+        <div className="bg-madverse-darker border border-orange-500/50 rounded-2xl p-8 md:p-12 text-center">
+          {/* Cancel Icon */}
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-orange-500/20 border border-orange-500 rounded-full mb-6">
+            <svg className="w-10 h-10 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2 font-display">Payment Cancelled</h1>
+          <p className="text-gray-400 text-lg font-body mb-8">
+            Your payment was not completed. Don't worry, your basket has been saved!
+          </p>
+
+          <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-6 mb-8">
+            <h3 className="text-white font-bold mb-3 font-display text-left">What Happened?</h3>
+            <p className="text-gray-300 font-body text-left">
+              You've cancelled the payment process. Your tickets are still in your basket and ready to purchase whenever you're ready.
+            </p>
+          </div>
+
+          <button
+            onClick={() => navigate('/checkout')}
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg uppercase tracking-wide transition-colors mb-3"
+          >
+            Return to Checkout
+          </button>
+
+          <button
+            onClick={() => navigate('/')}
+            className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 rounded-lg uppercase tracking-wide transition-colors"
+          >
+            Continue Shopping
+          </button>
+        </div>
+
+        {/* Support Section */}
+        <div className="mt-8 text-center">
+          <p className="text-gray-400 font-body mb-3">Still having issues?</p>
+          <a href="mailto:support@madverse.com" className="text-purple-400 hover:text-purple-300 font-body">
+            Get in Touch →
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <Routes>
@@ -4256,6 +4387,8 @@ export default function App() {
       />
       <Route path="/checkout" element={<CheckoutPage />} />
       <Route path="/payment" element={<PaymentPage />} />
+      <Route path="/success" element={<SuccessPage />} />
+      <Route path="/cancel" element={<CancelPage />} />
       <Route path="/tickets/confirmation" element={<TicketConfirmationPage />} />
       <Route path="/scanner" element={<ProtectedRoute requireAdmin={true}><ScannerPage /></ProtectedRoute>} />
       <Route path="/inventory" element={<ProtectedRoute requireAdmin={true}><InventoryPage /></ProtectedRoute>} />
