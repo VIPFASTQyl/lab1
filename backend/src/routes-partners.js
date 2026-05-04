@@ -21,15 +21,10 @@ router.use(authMiddleware);
 
 // Middleware to check if user isAdmin
 const isAdmin = (req, res, next) => {
-  if (req.user && req.user.isAdmin === 1) {
+  if (req.user && req.user.isAdmin === true) {
     next();
   } else {
-    // some systems use true/false or 1/0
-    if (req.user && (req.user.IsAdmin === 1 || req.user.IsAdmin === true || req.user.isAdmin === true || req.user.isAdmin === 1)) {
-        next();
-    } else {
-        return res.status(403).json({ message: 'Forbidden: Admin access required.' });
-    }
+    return res.status(403).json({ message: 'Forbidden: Admin access required.' });
   }
 };
 
