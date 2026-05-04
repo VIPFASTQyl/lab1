@@ -1,9 +1,10 @@
-# TicketApp (Node.js, React, MSSQL)
+# TicketApp (Node.js, React, MySQL)
 
 ## Stack
 - Backend: Node.js, Express, MSSQL (`mssql`), JWT, bcrypt
+- Backend: Node.js, Express, MySQL (`mysql2`), JWT, bcrypt
 - Frontend: React + React Router (Vite)
-- Database: Microsoft SQL Server
+- Database: MySQL
 
 ## Backend
 
@@ -16,14 +17,16 @@ Location: `backend`
 
    ```env
    PORT=5000
-   DB_USER=sa
-   DB_PASSWORD=YourStrong!Passw0rd
-   DB_SERVER=localhost
-   DB_NAME=TicketAppDb
+  DB_HOST=localhost
+  DB_PORT=3306
+  DB_USER=root
+  DB_PASSWORD=root
+  DB_NAME=ticketapp_db
    JWT_SECRET=change_this_secret
+  FRONTEND_URL=http://localhost:3000
    ```
 
-3. Create the database and tables by executing `db-schema.sql` in your MSSQL server.
+3. Create the database and tables by executing `backend/db-schema-mysql.sql` in MySQL.
 4. Run the API:
    - `npm run dev`
 
@@ -43,22 +46,22 @@ Base URL: `http://localhost:5000`
 Use the returned JWT as:
 - `Authorization: Bearer <token>`
 
-#### Tickets (protected)
-- `GET /api/tickets`
-  - Returns list of tickets.
+#### MySQL CRUD (new)
+- `GET /api/mysql/:resource`
+- `GET /api/mysql/:resource/:id`
+- `POST /api/mysql/:resource` (protected)
+- `PUT /api/mysql/:resource/:id` (protected)
+- `DELETE /api/mysql/:resource/:id` (protected)
 
-- `GET /api/tickets/:id`
-  - Returns a single ticket.
+Supported `:resource` values:
+- `users`, `venues`, `events`, `sectors`, `tickets`, `clients`, `orders`, `order-details`, `payments`, `organizers`, `event-organizers`, `discounts`, `ratings`, `partners`
 
-- `POST /api/tickets`
-  - Body: `{ "title": string, "description"?: string, "status"?: string, "priority"?: string }`
-  - Creates and returns the new ticket.
-
-- `PUT /api/tickets/:id`
-  - Body: any subset of ticket fields to update.
-
-- `DELETE /api/tickets/:id`
-  - Deletes a ticket.
+#### Event Catalog + Booking (new)
+- `GET /api/mysql/events-catalog` (public): returns event/ticket availability used by frontend
+- `POST /api/mysql/events-catalog` (protected): create event + ticket inventory
+- `PUT /api/mysql/events-catalog/:id` (protected): update event + ticket inventory
+- `DELETE /api/mysql/events-catalog/:id` (protected)
+- `POST /api/mysql/bookings` (protected): books available tickets and marks them sold
 
 #### Dashboard (protected)
 - `GET /api/dashboard/summary`
@@ -81,6 +84,11 @@ Location: `frontend`
 2. Start dev server:
    - `npm run dev`
 3. Frontend dev server (port 3000) proxies `/api` to backend `http://localhost:5000`.
+
+### Run Both Apps Together
+From repository root:
+- `npm install`
+- `npm run dev`
 
 ### Pages
 - `/login` — login form, stores JWT in `localStorage`.

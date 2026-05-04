@@ -22,53 +22,12 @@ function useBasket() {
   };
 
   const removeFromBasket = (index) => {
-    const itemToRemove = basket[index];
-    if (itemToRemove) {
-      // Restore stock in events
-      try {
-        const events = JSON.parse(localStorage.getItem('madverseEvents') || '{}');
-        if (events[itemToRemove.eventId] && events[itemToRemove.eventId].ticketTypes) {
-          const ticketType = events[itemToRemove.eventId].ticketTypes[itemToRemove.ticketType];
-          if (ticketType) {
-            // Restore the available stock
-            ticketType.available += itemToRemove.quantity;
-            localStorage.setItem('madverseEvents', JSON.stringify(events));
-          }
-        }
-      } catch (error) {
-        console.error('Error restoring stock:', error);
-      }
-    }
-
     const newBasket = basket.filter((_, i) => i !== index);
     setBasket(newBasket);
     localStorage.setItem('madverseBasket', JSON.stringify(newBasket));
   };
 
   const clearBasket = () => {
-    // Restore stock for all items in basket
-    try {
-      const events = JSON.parse(localStorage.getItem('madverseEvents') || '{}');
-      let hasChanges = false;
-
-      basket.forEach(item => {
-        if (events[item.eventId] && events[item.eventId].ticketTypes) {
-          const ticketType = events[item.eventId].ticketTypes[item.ticketType];
-          if (ticketType) {
-            // Restore the available stock
-            ticketType.available += item.quantity;
-            hasChanges = true;
-          }
-        }
-      });
-
-      if (hasChanges) {
-        localStorage.setItem('madverseEvents', JSON.stringify(events));
-      }
-    } catch (error) {
-      console.error('Error clearing basket stock:', error);
-    }
-
     setBasket([]);
     localStorage.removeItem('madverseBasket');
   };
@@ -79,216 +38,145 @@ function useBasket() {
 // Events Context - for managing festival events
 const EventsContext = createContext();
 
+function mapEventsFromApi(apiEvents = {}) {
+  const mapped = {};
+
+  for (const [id, event] of Object.entries(apiEvents)) {
+    const ticketTypes = event.ticketTypes || {};
+    const tickets = Object.values(ticketTypes);
+    const fallbackPrice = tickets.length > 0
+      ? Math.min(...tickets.map((t) => Number(t.price || 0)))
+      : 0;
+
+    mapped[id] = {
+      name: event.name || `Event ${id}`,
+      price: Number(event.price || fallbackPrice),
+      zones: event.zones || [],
+      description: event.description || '',
+      image: event.image || null,
+      ticketTypes
+    };
+  }
+
+  return mapped;
+}
+
+function toCatalogPayload(event) {
+  const ticketTypes = event.ticketTypes || {};
+  const cleanTicketTypes = {};
+
+  for (const [key, value] of Object.entries(ticketTypes)) {
+    const stock = Number(value.stock || 0);
+    const price = Number(value.price || 0);
+    if (stock > 0 && price > 0) {
+      cleanTicketTypes[key] = { stock, price };
+    }
+  }
+
+  return {
+    name: event.name,
+    description: event.description,
+    ticketTypes: cleanTicketTypes
+  };
+}
+
 function useEvents() {
   const [events, setEvents] = useState(() => {
     try {
-      const stored = localStorage.getItem('madverseEvents');
-      if (stored) {
-        return JSON.parse(stored);
-      }
-      // Default events if none exist - with ticket types and stock
-      return {
-        1: { 
-          name: 'E MARTÉ', 
-          price: 300, 
-          zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], 
-          description: 'Deep Space Pristhina - Tuesday',
-          ticketTypes: {
-            vip: { name: 'VIP', price: 500, stock: 20, available: 20 },
-            group: { name: 'Group of 4', price: 1200, stock: 30, available: 30 },
-            standard: { name: 'Standard', price: 300, stock: 200, available: 200 }
-          }
-        },
-        2: { 
-          name: 'E MERKURÉ', 
-          price: 300, 
-          zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], 
-          description: 'Deep Space Pristhina - Wednesday',
-          ticketTypes: {
-            vip: { name: 'VIP', price: 500, stock: 20, available: 20 },
-            group: { name: 'Group of 4', price: 1200, stock: 30, available: 30 },
-            standard: { name: 'Standard', price: 300, stock: 200, available: 200 }
-          }
-        },
-        3: { 
-          name: 'Event You Don\'t Wanna Miss', 
-          price: 800, 
-          zones: ['VIP - 1200€', 'General - 800€'], 
-          description: 'An event you don\'t wanna miss',
-          ticketTypes: {
-            vip: { name: 'VIP', price: 1200, stock: 20, available: 20 },
-            group: { name: 'Group of 4', price: 2800, stock: 40, available: 40 },
-            standard: { name: 'Standard', price: 800, stock: 300, available: 300 }
-          }
-        },
-        4: { 
-          name: 'E ENJTE', 
-          price: 300, 
-          zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], 
-          description: 'Deep Space Pristhina - Thursday',
-          ticketTypes: {
-            vip: { name: 'VIP', price: 500, stock: 20, available: 20 },
-            group: { name: 'Group of 4', price: 1200, stock: 30, available: 30 },
-            standard: { name: 'Standard', price: 300, stock: 200, available: 200 }
-          }
-        },
-        5: { 
-          name: 'E PREMTE', 
-          price: 300, 
-          zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], 
-          description: 'Deep Space Pristhina - Friday',
-          ticketTypes: {
-            vip: { name: 'VIP', price: 500, stock: 20, available: 20 },
-            group: { name: 'Group of 4', price: 1200, stock: 30, available: 30 },
-            standard: { name: 'Standard', price: 300, stock: 200, available: 200 }
-          }
-        },
-        6: { 
-          name: 'E SHTUNE', 
-          price: 300, 
-          zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], 
-          description: 'Deep Space Pristhina - Saturday',
-          ticketTypes: {
-            vip: { name: 'VIP', price: 500, stock: 20, available: 20 },
-            group: { name: 'Group of 4', price: 1200, stock: 30, available: 30 },
-            standard: { name: 'Standard', price: 300, stock: 200, available: 200 }
-          }
-        },
-        7: { 
-          name: 'E DIELË', 
-          price: 300, 
-          zones: ['VIP - 500€', 'Standard - 350€', 'General - 300€'], 
-          description: 'Deep Space Pristhina - Sunday',
-          ticketTypes: {
-            vip: { name: 'VIP', price: 500, stock: 20, available: 20 },
-            group: { name: 'Group of 4', price: 1200, stock: 30, available: 30 },
-            standard: { name: 'Standard', price: 300, stock: 200, available: 200 }
-          }
-        },
-        8: { 
-          name: 'ANA CARLA MAZA', 
-          price: 1000, 
-          zones: ['VIP - 1500€', 'Standard - 1000€', 'General - 800€'], 
-          description: 'Ana Carla Maza Live',
-          ticketTypes: {
-            vip: { name: 'VIP', price: 1500, stock: 50, available: 50 },
-            group: { name: 'Group of 4', price: 3600, stock: 60, available: 60 },
-            standard: { name: 'Standard', price: 800, stock: 400, available: 400 }
-          }
-        },
-        9: { 
-          name: 'Cactus in the Snow', 
-          price: 2500, 
-          zones: ['VIP - 4000€', 'Standard - 2500€', 'General - 1500€'], 
-          description: 'Cactus in the Snow',
-          ticketTypes: {
-            vip: { name: 'VIP', price: 4000, stock: 30, available: 30 },
-            group: { name: 'Group of 4', price: 9000, stock: 50, available: 50 },
-            standard: { name: 'Standard', price: 1500, stock: 500, available: 500 }
-          }
-        },
-        10: { 
-          name: 'PETER PAN QUARTET', 
-          price: 300, 
-          zones: ['Standard - 400€', 'General - 300€'], 
-          description: 'Peter Pan Quartet',
-          ticketTypes: {
-            group: { name: 'Group of 4', price: 1200, stock: 40, available: 40 },
-            standard: { name: 'Standard', price: 300, stock: 250, available: 250 }
-          }
-        },
-        11: { 
-          name: 'DURIM', 
-          price: 20000, 
-          zones: ['VIP - 30000€', 'Standard - 20000€'], 
-          description: 'DURIM Concert',
-          ticketTypes: {
-            vip: { name: 'VIP', price: 30000, stock: 15, available: 15 },
-            group: { name: 'Group of 4', price: 72000, stock: 20, available: 20 },
-            standard: { name: 'Standard', price: 20000, stock: 150, available: 150 }
-          }
-        },
-        12: { 
-          name: 'Muse-X Festival', 
-          price: 2500, 
-          zones: ['VIP - 4500€', 'Standard - 2500€', 'General - 1500€', 'Student - 1000€'], 
-          description: 'Muse-X Festival 2 Day',
-          ticketTypes: {
-            vip: { name: 'VIP', price: 4500, stock: 100, available: 100 },
-            group: { name: 'Group of 4', price: 10000, stock: 150, available: 150 },
-            standard: { name: 'Standard', price: 2500, stock: 1000, available: 1000 }
-          }
-        },
-        13: { 
-          name: 'LYREL.CS', 
-          price: 3100, 
-          zones: ['Standard - 4000€', 'General - 3100€'], 
-          description: 'LYREL.CS Live',
-          ticketTypes: {
-            group: { name: 'Group of 4', price: 12000, stock: 50, available: 50 },
-            standard: { name: 'Standard', price: 3100, stock: 400, available: 400 }
-          }
-        },
-        14: { 
-          name: 'EXHALE TIBANA', 
-          price: 800, 
-          zones: ['VIP - 1200€', 'Standard - 900€', 'General - 800€'], 
-          description: 'Exhale Tibana',
-          ticketTypes: {
-            vip: { name: 'VIP', price: 1200, stock: 25, available: 25 },
-            group: { name: 'Group of 4', price: 3000, stock: 35, available: 35 },
-            standard: { name: 'Standard', price: 800, stock: 300, available: 300 }
-          }
-        },
-        15: { 
-          name: 'Stand UPR 2nd Edition', 
-          price: 2800, 
-          zones: ['Standard - 3200€', 'General - 2800€'], 
-          description: 'Stand Up Comedy',
-          ticketTypes: {
-            group: { name: 'Group of 4', price: 10000, stock: 40, available: 40 },
-            standard: { name: 'Standard', price: 2800, stock: 350, available: 350 }
-          }
-        },
-        16: { 
-          name: 'MARCEL DETTMANN - RAVE', 
-          price: 1500, 
-          zones: ['VIP - 2000€', 'Standard - 1500€', 'General - 1000€'], 
-          description: 'Marcel Dettmann Rave',
-          ticketTypes: {
-            vip: { name: 'VIP', price: 2000, stock: 35, available: 35 },
-            group: { name: 'Group of 4', price: 5000, stock: 60, available: 60 },
-            standard: { name: 'Standard', price: 1500, stock: 400, available: 400 }
-          }
-        }
-      };
+      return JSON.parse(localStorage.getItem('madverseEvents') || '{}');
     } catch {
       return {};
     }
   });
 
-  const addEvent = (event) => {
-    const newId = Math.max(0, ...Object.keys(events).map(Number)) + 1;
-    const newEvents = { ...events, [newId]: event };
-    setEvents(newEvents);
-    localStorage.setItem('madverseEvents', JSON.stringify(newEvents));
-    return newId;
+  const refreshEvents = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/mysql/events-catalog`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch events');
+      }
+
+      const payload = await response.json();
+      const mappedEvents = mapEventsFromApi(payload.events || {});
+      setEvents(mappedEvents);
+      localStorage.setItem('madverseEvents', JSON.stringify(mappedEvents));
+    } catch (error) {
+      console.error('Error refreshing events:', error.message);
+    }
   };
 
-  const updateEvent = (id, updatedEvent) => {
-    const newEvents = { ...events, [id]: updatedEvent };
-    setEvents(newEvents);
-    localStorage.setItem('madverseEvents', JSON.stringify(newEvents));
+  useEffect(() => {
+    refreshEvents();
+
+    const onRefresh = () => {
+      refreshEvents();
+    };
+
+    window.addEventListener('madverse:events-refresh', onRefresh);
+    return () => window.removeEventListener('madverse:events-refresh', onRefresh);
+  }, []);
+
+  const addEvent = async (event) => {
+    const token = getToken();
+    const response = await fetch(`${API_BASE}/mysql/events-catalog`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(toCatalogPayload(event))
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to create event');
+    }
+
+    const created = await response.json();
+    await refreshEvents();
+    window.dispatchEvent(new Event('madverse:events-refresh'));
+    return created.EventId;
   };
 
-  const deleteEvent = (id) => {
-    const newEvents = { ...events };
-    delete newEvents[id];
-    setEvents(newEvents);
-    localStorage.setItem('madverseEvents', JSON.stringify(newEvents));
+  const updateEvent = async (id, updatedEvent) => {
+    const token = getToken();
+    const response = await fetch(`${API_BASE}/mysql/events-catalog/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(toCatalogPayload(updatedEvent))
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to update event');
+    }
+
+    await refreshEvents();
+    window.dispatchEvent(new Event('madverse:events-refresh'));
   };
 
-  return { events, addEvent, updateEvent, deleteEvent };
+  const deleteEvent = async (id) => {
+    const token = getToken();
+    const response = await fetch(`${API_BASE}/mysql/events-catalog/${id}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok && response.status !== 204) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to delete event');
+    }
+
+    await refreshEvents();
+    window.dispatchEvent(new Event('madverse:events-refresh'));
+  };
+
+  return { events, addEvent, updateEvent, deleteEvent, refreshEvents };
 }
 
 // Auth Context - for managing user authentication
@@ -1177,7 +1065,7 @@ function DashboardPage() {
     }
   };
 
-  const handleSaveEvent = () => {
+  const handleSaveEvent = async () => {
     if (!formData.name || !formData.description) {
       showNotification('Please fill in event name and description', 'error');
       return;
@@ -1227,20 +1115,30 @@ function DashboardPage() {
       ticketTypes
     };
 
-    if (editingEventId) {
-      updateEvent(editingEventId, eventData);
-      showNotification('Event updated successfully');
-    } else {
-      addEvent(eventData);
-      showNotification('Event created successfully');
+    try {
+      if (editingEventId) {
+        await updateEvent(editingEventId, eventData);
+        showNotification('Event updated successfully');
+      } else {
+        await addEvent(eventData);
+        showNotification('Event created successfully');
+      }
+      handleCloseModal();
+    } catch (error) {
+      console.error(error);
+      showNotification(error.message || 'Failed to save event', 'error');
     }
-    handleCloseModal();
   };
 
-  const handleDeleteEvent = (id) => {
-    deleteEvent(id);
-    setDeleteConfirmId(null);
-    showNotification('Event deleted successfully');
+  const handleDeleteEvent = async (id) => {
+    try {
+      await deleteEvent(id);
+      setDeleteConfirmId(null);
+      showNotification('Event deleted successfully');
+    } catch (error) {
+      console.error(error);
+      showNotification(error.message || 'Failed to delete event', 'error');
+    }
   };
 
   // Object Map handlers
@@ -2784,6 +2682,25 @@ function PaymentPage() {
         }
 
         const purchaseData = await purchaseResponse.json();
+
+        // Persist booking state in MySQL inventory for synchronized availability
+        const bookingResponse = await fetch(`${API_BASE}/mysql/bookings`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            eventId: item.eventId,
+            ticketType: item.ticketType,
+            quantity: item.quantity
+          })
+        });
+
+        if (!bookingResponse.ok) {
+          const bookingError = await bookingResponse.json().catch(() => ({}));
+          throw new Error(bookingError.message || 'Ticket inventory update failed');
+        }
         
         // Collect all tickets from all purchases
         if (purchaseData.tickets) {
@@ -2801,6 +2718,7 @@ function PaymentPage() {
 
       // Clear basket after all purchases succeed
       clearBasket();
+      window.dispatchEvent(new Event('madverse:events-refresh'));
       setLoading(false);
 
       // Navigate to confirmation page with ticket data
@@ -3227,7 +3145,7 @@ function EventDetailPage() {
   const { user } = useAuth();
   const eventId = parseInt(id);
   const { basket, addToBasket } = useBasket();
-  const { events, updateEvent } = useEvents();
+  const { events } = useEvents();
   
   const [selectedTicketType, setSelectedTicketType] = useState(null);
   const [quantity, setQuantity] = useState(1);
@@ -3285,13 +3203,6 @@ function EventDetailPage() {
       setMessage(`❌ Only ${ticketTypeData.available} tickets available`);
       return;
     }
-
-    // Deduct from stock
-    const updatedEvent = { ...event };
-    updatedEvent.ticketTypes[selectedTicketType].available -= quantity;
-    
-    // Update events
-    updateEvent(eventId, updatedEvent);
 
     // Add to basket
     addToBasket({ 

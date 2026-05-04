@@ -12,13 +12,13 @@ import relationsRoutes from './routes-relations.js';
 import contactRoutes from './routes-contact.js';
 import partnersRoutes from './routes-partners.js';
 import purchasesRoutes from './routes-purchases.js';
+import mysqlRoutes from './routes-mysql.js';
 import Stripe from 'stripe';
 
-if (!stripeConfig.secretKey) {
-  console.error('❌ STRIPE_SECRET_KEY is not configured in .env file');
+const stripe = stripeConfig.secretKey ? new Stripe(stripeConfig.secretKey) : null;
+if (!stripe) {
+  console.warn('STRIPE_SECRET_KEY is not configured. Checkout endpoint will be unavailable.');
 }
-
-const stripe = new Stripe(stripeConfig.secretKey);
 
 const app = express();
 
@@ -36,6 +36,10 @@ app.use('/api/auth', authRoutes);
 // Stripe Checkout
 app.post('/api/create-checkout-session', async (req, res) => {
   try {
+    if (!stripe) {
+      return res.status(503).json({ error: 'Stripe is not configured on server' });
+    }
+
     const { basket } = req.body;
     
     if (!basket || basket.length === 0) {
@@ -109,6 +113,9 @@ app.use('/api/partners', partnersRoutes);
 
 // Ticket Purchases & QR Codes
 app.use('/api/purchases', purchasesRoutes);
+
+// MySQL-backed generic CRUD and catalog routes
+app.use('/api/mysql', mysqlRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: 'Not found' });

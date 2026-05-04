@@ -1,203 +1,98 @@
-# ✅ Backend MySQL Setup - Complete Guide
+# Quick Start (MySQL + Full Backend Integration)
 
-## ✨ What's Ready Now
+## 1) Configure Environment
+Create backend/.env from backend/.env.example:
 
-✅ **Converted to MySQL:**
-- `routes-auth.js` - Register / Login endpoints
-- `routes-dashboard.js` - Analytics dashboard  
-- Database connection configured for MySQL
-- Schema file created (`db-schema-mysql.sql`)
+```env
+PORT=5000
+FRONTEND_URL=http://localhost:3000
 
-⚙️ **Still Need Conversion** (for full API):
-- `routes-events.js` - Events, Venues, Sectors CRUD
-- `routes-tickets.js` - Tickets CRUD
-- `routes-sales.js` - Sales, Clients, Orders CRUD
-- `routes-extras.js` - Payments, Organizers, Discounts, Ratings CRUD
-- `routes-relations.js` - Event-Organizers CRUD
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=root
+DB_NAME=ticketapp_db
 
----
+JWT_SECRET=change_this_secret
 
-## 🚀 Quick Start (5 minutes)
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASSWORD=your-app-password
 
-### 1. Install MySQL Server
-
-**Windows:**
-1. Download: https://dev.mysql.com/downloads/mysql/
-2. Run installer → Select "Development Machine"
-3. Follow defaults → Port 3306
-4. Set root password: `root`
-5. Install as Windows Service
-
-Verify:
-```powershell
-mysql --version
+STRIPE_SECRET_KEY=
+STRIPE_PUBLISHABLE_KEY=
 ```
 
-### 2. Create Database
+## 2) Create MySQL Schema
+Run:
 
-Open PowerShell and run:
-```powershell
-mysql -u root -p
-```
-Enter password: `root`
+- backend/db-schema-mysql.sql
 
-Then copy-paste ALL of this into MySQL:
-```sql
-CREATE DATABASE IF NOT EXISTS ticketapp_db;
-USE ticketapp_db;
+This creates all operational tables:
+Users, Venues, Events, Sectors, Tickets, Clients, Orders, OrderDetails, Payments, Organizers, EventOrganizers, Discounts, Ratings, Partners.
 
-CREATE TABLE IF NOT EXISTS Users (
-  Id INT AUTO_INCREMENT PRIMARY KEY,
-  Name VARCHAR(100) NOT NULL,
-  Email VARCHAR(255) NOT NULL UNIQUE,
-  PasswordHash VARCHAR(255) NOT NULL,
-  IsAdmin BOOLEAN NOT NULL DEFAULT 0,
-  CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+## 3) Install Dependencies
+From repository root:
 
-INSERT INTO Users (Name, Email, PasswordHash, IsAdmin, CreatedAt) VALUES 
-('Admin User', 'admin@ticketapp.com', '$2a$10$YIjlrTvxGxL0x0D.2YvPEOS0q7DQNrZgWmGBrYc/QOTy4m2wlCpJi', 1, NOW());
+```bash
+npm install
 ```
 
-> Password hash above decodes to: `admin123`
+## 4) Start Frontend + Backend
+From repository root:
 
-### 3. Test Registration/Login
-
-**Start Backend:**
-```powershell
-cd backend
+```bash
 npm run dev
 ```
 
-Expected output:
-```
-Connected to MySQL database
-TicketApp API running on port 5000
-```
+- Frontend: http://localhost:3000
+- Backend: http://localhost:5000
 
-**Start Frontend:**
-```powershell
-cd frontend
-npm run dev
-```
+## 5) Verify MySQL Backend Is Running
+Health endpoint:
 
-**Test:**
-1. Visit http://localhost:3000
-2. Click **Register**
-3. Fill in:
-   - Name: `Test User`
-   - Email: `test@example.com`
-   - Password: `password123`
-4. Click **Create Account**
+- GET /api/mysql/health
 
-✅ **Expected**: Registration successful, redirects to Events page
+Expected response:
 
-**Login Test:**
-- Email: `admin@ticketapp.com`
-- Password: `admin123`
-
----
-
-## 📋 Route Status
-
-### ✓ Ready to Use
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `GET /api/dashboard/summary`
-
-### ⏳ Needs SQL Conversion (can add later)
-All other endpoints require converting from MSSQL to MySQL syntax
-
----
-
-## 🔧 Next Steps
-
-### If You Want All Routes Working
-
-Option A: **I'll convert them (agent)**
-- Just ask me to convert remaining routes
-- Wait ~10-15 minutes
-- All CRUD operations will work
-
-Option B: **You convert them**
-- Pattern is the same for all:
-  - `pool.request()` → `pool.query()`
-  - `sql.NVarChar` → Remove
-  - `@paramName` → `?`
-  - `.recordset` → First element of returned array
-  - Example:
-    ```javascript
-    // MSSQL
-    const result = await pool.request()
-      .input('id', sql.Int, id)
-      .query('SELECT * FROM Users WHERE Id = @id');
-    const user = result.recordset[0];
-    
-    // MySQL
-    const [results] = await pool.query('SELECT * FROM Users WHERE Id = ?', [id]);
-    const user = results[0];
-    ```
-
----
-
-## ⚠️ Troubleshooting
-
-### Error: "connect ECONNREFUSED"
-MySQL is not running
-```powershell
-# Restart MySQL service
-net start MySQL80
+```json
+{ "ok": true, "engine": "mysql" }
 ```
 
-### Error: "Access denied for user 'root'"
-Wrong password - check `.env` file or update password
+## 6) New MySQL CRUD API
+Generic endpoints:
 
-### Error: "Unknown database"
-Run the CREATE DATABASE command above
+- GET /api/mysql/:resource
+- GET /api/mysql/:resource/:id
+- POST /api/mysql/:resource
+- PUT /api/mysql/:resource/:id
+- DELETE /api/mysql/:resource/:id
 
-### Error on routes besides auth
-Expected - they still use MSSQL syntax
+Resources:
 
----
+- users
+- venues
+- events
+- sectors
+- tickets
+- clients
+- orders
+- order-details
+- payments
+- organizers
+- event-organizers
+- discounts
+- ratings
+- partners
 
-## 📊 Database Info
+Notes:
 
-- **Host**: localhost
-- **Port**: 3306
-- **Database**: `ticketapp_db`
-- **User**: `root`
-- **Password**: `root`
+- GET routes are public.
+- POST/PUT/DELETE require Authorization: Bearer <token>.
 
-View data:
-```powershell
-mysql -u root -p ticketapp_db
-```
+## 7) Frontend Integration Included
+The frontend event flow now uses backend data instead of static local event definitions:
 
-```sql
-SELECT * FROM Users;
-SELECT * FROM Events;
-SELECT * FROM Orders;
-```
-
----
-
-## ✅ Testing Checklist
-
-- [ ] MySQL installed and running
-- [ ] Database `ticketapp_db` created
-- [ ] Backend running (`npm run dev`)
-- [ ] Frontend running (`npm run dev`)
-- [ ] ✅ Registration works
-- [ ] ✅ Login works
-- [ ] Admin dashboard loads
-
----
-
-## 🎯 What to Do Now
-
-1. **Install MySQL** (follow step 1 above)
-2. **Create database** (follow step 2 above)
-3. **Start backend** (`npm run dev`)
-4. **Test registration** at http://localhost:3000
-
-Let me know if you want me to convert the remaining routes!
+- Event listing pulls from GET /api/mysql/events-catalog
+- Event create/update/delete uses MySQL catalog routes
+- Payment flow books tickets via POST /api/mysql/bookings
+- Event data refreshes after booking so availability updates in UI
