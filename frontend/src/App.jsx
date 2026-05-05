@@ -244,12 +244,10 @@ function useEvents() {
   }, []);
 
   const addEvent = async (event) => {
-    const token = getToken();
-    const response = await fetch(`${API_BASE}/mysql/events-catalog`, {
+    const response = await authFetch(`${API_BASE}/mysql/events-catalog`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(toCatalogPayload(event))
     });
@@ -266,12 +264,10 @@ function useEvents() {
   };
 
   const updateEvent = async (id, updatedEvent) => {
-    const token = getToken();
-    const response = await fetch(`${API_BASE}/mysql/events-catalog/${id}`, {
+    const response = await authFetch(`${API_BASE}/mysql/events-catalog/${id}`, {
       method: 'PUT',
       headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(toCatalogPayload(updatedEvent))
     });
@@ -286,12 +282,9 @@ function useEvents() {
   };
 
   const deleteEvent = async (id) => {
-    const token = getToken();
-    const response = await fetch(`${API_BASE}/mysql/events-catalog/${id}`, {
+    const response = await authFetch(`${API_BASE}/mysql/events-catalog/${id}`, {
       method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+      headers: {}
     });
 
     if (!response.ok && response.status !== 204) {
@@ -411,6 +404,44 @@ function getToken() {
 function setToken(token) {
   if (token) localStorage.setItem('token', token);
   else localStorage.removeItem('token');
+}
+
+function clearAuthToken() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('isAdmin');
+}
+
+function isTokenExpired(token) {
+  const decoded = decodeJwtToken(token);
+  if (!decoded) return true;
+  if (typeof decoded.exp !== 'number') return false;
+  return Date.now() >= decoded.exp * 1000;
+}
+
+async function authFetch(url, options = {}) {
+  const token = getToken();
+
+  if (!token || isTokenExpired(token)) {
+    clearAuthToken();
+    window.location.assign('/');
+    throw new Error('Your session expired. Please sign in again.');
+  }
+
+  const headers = new Headers(options.headers || {});
+  headers.set('Authorization', `Bearer ${token}`);
+
+  const response = await fetch(url, {
+    ...options,
+    headers
+  });
+
+  if (response.status === 401) {
+    clearAuthToken();
+    window.location.assign('/');
+    throw new Error('Your session expired. Please sign in again.');
+  }
+
+  return response;
 }
 
 function setIsAdminFlag(isAdmin) {
@@ -989,11 +1020,9 @@ function DashboardPage() {
   useEffect(() => {
     async function loadDashboard() {
       try {
-        const token = getToken();
-        
         // Fetch summary data
-        const summaryRes = await fetch(`${API_BASE}/dashboard/summary`, {
-          headers: { Authorization: `Bearer ${token}` }
+        const summaryRes = await authFetch(`${API_BASE}/dashboard/summary`, {
+          headers: {}
         });
         if (summaryRes.ok) {
           const summaryData = await summaryRes.json();
@@ -1001,8 +1030,8 @@ function DashboardPage() {
         }
 
         // Fetch events data
-        const eventsRes = await fetch(`${API_BASE}/dashboard/events`, {
-          headers: { Authorization: `Bearer ${token}` }
+        const eventsRes = await authFetch(`${API_BASE}/dashboard/events`, {
+          headers: {}
         });
         if (eventsRes.ok) {
           const eventsData = await eventsRes.json();

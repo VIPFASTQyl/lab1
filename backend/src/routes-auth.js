@@ -49,24 +49,19 @@ router.post('/register', async (req, res) => {
 
     const hash = await bcrypt.hash(password, 10);
     
-    // Split name into first and last name
-    const nameParts = name.split(' ');
-    const firstName = nameParts[0] || 'User';
-    const lastName = nameParts.slice(1).join(' ') || 'Account';
-
     // Check if this is the admin email
     const isAdmin = email === ADMIN_EMAIL ? 1 : 0;
 
     const result = await db.run(
-      'INSERT INTO Users (FirstName, LastName, Email, PasswordHash, IsAdmin, CreatedAt) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)',
-      [firstName, lastName, email, hash, isAdmin]
+      'INSERT INTO Users (Name, Email, PasswordHash, IsAdmin, CreatedAt) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
+      [name.trim(), email, hash, isAdmin]
     );
 
     const token = jwt.sign(
       {
         userId: result.lastID,
         id: result.lastID,
-        name: firstName,
+        name: name.trim(),
         email: email,
         isAdmin: isAdmin === 1
       },
@@ -92,7 +87,7 @@ router.post('/login', async (req, res) => {
     const db = await getDbPool();
 
     const user = await db.get(
-      'SELECT Id, FirstName, Email, PasswordHash, IsAdmin FROM Users WHERE Email = ? LIMIT 1',
+      'SELECT Id, Name, Email, PasswordHash, IsAdmin FROM Users WHERE Email = ? LIMIT 1',
       [email]
     );
 
@@ -109,7 +104,7 @@ router.post('/login', async (req, res) => {
       {
         userId: user.Id,
         id: user.Id,
-        name: user.FirstName,
+        name: user.Name,
         email: user.Email,
         isAdmin: user.IsAdmin === 1
       },
@@ -129,7 +124,7 @@ router.get('/profile', authMiddleware, async (req, res) => {
   try {
     const db = await getDbPool();
     const user = await db.get(
-      'SELECT Id, FirstName, LastName, Email, IsAdmin, CreatedAt FROM Users WHERE Id = ?',
+      'SELECT Id, Name, Email, IsAdmin, CreatedAt FROM Users WHERE Id = ?',
       [req.user.userId]
     );
 
@@ -139,9 +134,7 @@ router.get('/profile', authMiddleware, async (req, res) => {
 
     return res.json({
       userId: user.Id,
-      name: `${user.FirstName} ${user.LastName}`,
-      firstName: user.FirstName,
-      lastName: user.LastName,
+      name: user.Name,
       email: user.Email,
       isAdmin: user.IsAdmin === 1,
       createdAt: user.CreatedAt
@@ -234,7 +227,7 @@ router.post('/forgot-password', async (req, res) => {
 
   try {
     const db = await getDbPool();
-    const user = await db.get('SELECT Id, Email, FirstName FROM Users WHERE Email = ?', [email]);
+    const user = await db.get('SELECT Id, Email, Name FROM Users WHERE Email = ?', [email]);
 
     if (!user) {
       // Don't reveal if email exists (security best practice)
@@ -268,7 +261,7 @@ router.post('/forgot-password', async (req, res) => {
             </div>
             
             <div style="padding: 30px; background-color: #f5f5f5;">
-              <p>Hi ${user.FirstName},</p>
+              <p>Hi ${user.Name},</p>
               
               <p>We received a request to reset the password for your account. If you didn't make this request, you can ignore this email.</p>
               

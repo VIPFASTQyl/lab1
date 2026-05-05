@@ -82,8 +82,7 @@ async function createTablesIfNotExist() {
     const tables = [
       `CREATE TABLE IF NOT EXISTS Users (
         Id INT AUTO_INCREMENT PRIMARY KEY,
-        FirstName VARCHAR(255) NOT NULL,
-        LastName VARCHAR(255) NOT NULL,
+        Name VARCHAR(255) NOT NULL,
         Email VARCHAR(255) UNIQUE NOT NULL,
         PasswordHash VARCHAR(255) NOT NULL,
         IsAdmin INT DEFAULT 0,
