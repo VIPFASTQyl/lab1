@@ -13,6 +13,7 @@ import contactRoutes from './routes-contact.js';
 import partnersRoutes from './routes-partners.js';
 import purchasesRoutes from './routes-purchases.js';
 import mysqlRoutes from './routes-mysql.js';
+import cartRoutes from './routes-cart.js';
 import Stripe from 'stripe';
 
 const stripe = stripeConfig.secretKey ? new Stripe(stripeConfig.secretKey) : null;
@@ -116,6 +117,9 @@ app.use('/api/purchases', purchasesRoutes);
 
 // MySQL-backed generic CRUD and catalog routes
 app.use('/api/mysql', mysqlRoutes);
+
+// Shopping Cart
+app.use('/api/cart', cartRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: 'Not found' });

@@ -3,36 +3,170 @@ import { Routes, Route, Navigate, useNavigate, useParams, useLocation, useSearch
 
 const API_BASE = '/api';
 
-// Basket Context
+// Basket Context - Using Database API
 const BasketContext = createContext();
 
 function useBasket() {
-  const [basket, setBasket] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('madverseBasket') || '[]');
-    } catch {
-      return [];
+  const [basket, setBasket] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // Fetch cart from database
+  const fetchCart = async () => {
+    const token = getToken();
+    if (!token) {
+      setBasket([]);
+      return;
     }
-  });
 
-  const addToBasket = (item) => {
-    const newBasket = [...basket, item];
-    setBasket(newBasket);
-    localStorage.setItem('madverseBasket', JSON.stringify(newBasket));
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE}/cart`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Transform database cart to basket format
+        const transformedBasket = data.cart.map(item => ({
+          cartId: item.CartId,
+          eventId: item.EventId,
+          eventName: item.EventTitle,
+          ticketType: item.TicketType,
+          ticketTypeName: item.TicketType,
+          quantity: item.Quantity,
+          price: parseFloat(item.Price),
+          total: parseFloat(item.Price) * item.Quantity
+        }));
+        setBasket(transformedBasket);
+        setError('');
+      } else {
+        setError('Failed to fetch cart');
+      }
+    } catch (err) {
+      console.error('Error fetching cart:', err);
+      setError('Failed to load cart');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const removeFromBasket = (index) => {
-    const newBasket = basket.filter((_, i) => i !== index);
-    setBasket(newBasket);
-    localStorage.setItem('madverseBasket', JSON.stringify(newBasket));
+  // Fetch cart on mount and when token changes
+  useEffect(() => {
+    fetchCart();
+    const interval = setInterval(fetchCart, 30000); // Refresh every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  const addToBasket = async (item) => {
+    const token = getToken();
+    if (!token) {
+      setError('Please log in to add items to basket');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/cart`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          eventId: item.eventId,
+          ticketType: item.ticketType || 'General',
+          quantity: item.quantity || 1,
+          price: item.price
+        })
+      });
+
+      if (response.ok) {
+        await fetchCart(); // Refresh basket
+      } else {
+        const data = await response.json();
+        setError(data.message || 'Failed to add item to basket');
+      }
+    } catch (err) {
+      console.error('Error adding to basket:', err);
+      setError('Failed to add item to basket');
+    }
   };
 
-  const clearBasket = () => {
-    setBasket([]);
-    localStorage.removeItem('madverseBasket');
+  const removeFromBasket = async (index) => {
+    const token = getToken();
+    if (!token) return;
+
+    const item = basket[index];
+    if (!item?.cartId) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/cart/${item.cartId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        await fetchCart(); // Refresh basket
+      } else {
+        setError('Failed to remove item from basket');
+      }
+    } catch (err) {
+      console.error('Error removing from basket:', err);
+      setError('Failed to remove item');
+    }
   };
 
-  return { basket, addToBasket, removeFromBasket, clearBasket };
+  const updateBasketItem = async (index, newQuantity) => {
+    const token = getToken();
+    if (!token) return;
+
+    const item = basket[index];
+    if (!item?.cartId) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/cart/${item.cartId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ quantity: newQuantity })
+      });
+
+      if (response.ok) {
+        await fetchCart(); // Refresh basket
+      } else {
+        setError('Failed to update item quantity');
+      }
+    } catch (err) {
+      console.error('Error updating basket item:', err);
+      setError('Failed to update item');
+    }
+  };
+
+  const clearBasket = async () => {
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/cart`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        setBasket([]);
+        setError('');
+      } else {
+        setError('Failed to clear basket');
+      }
+    } catch (err) {
+      console.error('Error clearing basket:', err);
+      setError('Failed to clear basket');
+    }
+  };
+
+  return { basket, addToBasket, removeFromBasket, clearBasket, updateBasketItem, fetchCart, loading, error };
 }
 
 // Events Context - for managing festival events
@@ -81,13 +215,7 @@ function toCatalogPayload(event) {
 }
 
 function useEvents() {
-  const [events, setEvents] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('madverseEvents') || '{}');
-    } catch {
-      return {};
-    }
-  });
+  const [events, setEvents] = useState({});
 
   const refreshEvents = async () => {
     try {
@@ -99,7 +227,6 @@ function useEvents() {
       const payload = await response.json();
       const mappedEvents = mapEventsFromApi(payload.events || {});
       setEvents(mappedEvents);
-      localStorage.setItem('madverseEvents', JSON.stringify(mappedEvents));
     } catch (error) {
       console.error('Error refreshing events:', error.message);
     }
