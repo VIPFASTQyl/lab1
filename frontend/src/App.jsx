@@ -2451,10 +2451,10 @@ function LandingPage() {
                           <>
                             <div className="flex items-center space-x-3 mb-3">
                               <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                                {profileData.firstName.charAt(0).toUpperCase()}
+                                {(profileData.name || profileData.firstName || 'U').charAt(0).toUpperCase()}
                               </div>
                               <div>
-                                <p className="text-white font-semibold">{profileData.name}</p>
+                                <p className="text-white font-semibold">{profileData.name || profileData.firstName}</p>
                                 <p className="text-gray-400 text-sm">{profileData.email}</p>
                               </div>
                             </div>
