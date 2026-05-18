@@ -4307,6 +4307,48 @@ function SuccessPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('session_id');
+  
+  const { basket, clearBasket } = useBasket();
+  const { user } = useAuth();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessed, setIsProcessed] = useState(false);
+
+  useEffect(() => {
+    async function processOrder() {
+      if (sessionId && basket.length > 0 && !isProcessing && !isProcessed) {
+        setIsProcessing(true);
+        const token = localStorage.getItem('token');
+        
+        try {
+          for (const item of basket) {
+            await fetch('http://localhost:5000/api/purchases', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                eventId: item.eventId,
+                eventTitle: item.eventName,
+                ticketType: item.ticketType,
+                quantity: item.quantity,
+                email: user?.email || '',
+                name: user?.name || ''
+              })
+            });
+          }
+          await clearBasket();
+          setIsProcessed(true);
+        } catch (error) {
+          console.error("Order processing failed:", error);
+        } finally {
+          setIsProcessing(false);
+        }
+      }
+    }
+    
+    processOrder();
+  }, [sessionId, basket, isProcessing, isProcessed, user]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-madverse-dark to-madverse-darker flex items-center justify-center px-4">

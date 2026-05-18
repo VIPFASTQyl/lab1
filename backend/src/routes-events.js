@@ -243,18 +243,18 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const db = await getDbPool();
-    const { Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status } = req.body;
+    const { Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status, ImageUrl } = req.body;
     
     if (!Title || !EventDate || !VenueId) {
       return res.status(400).json({ message: 'Title, EventDate, and VenueId are required' });
     }
 
     const result = await db.run(
-      'INSERT INTO Events (Title, Description, EventDate, VenueId) VALUES (?, ?, ?, ?)',
-      [Title, Description || null, EventDate, VenueId]
+      'INSERT INTO Events (Title, Description, EventDate, VenueId, ImageUrl) VALUES (?, ?, ?, ?, ?)',
+      [Title, Description || null, EventDate, VenueId, ImageUrl || null]
     );
     
-    res.status(201).json({ EventId: result.lastID, Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status });
+    res.status(201).json({ EventId: result.lastID, Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status, ImageUrl });
   } catch (error) {
     console.error('Error creating event:', error);
     res.status(500).json({ message: 'Error creating event', error: error.message });
@@ -266,11 +266,11 @@ router.put('/:id', async (req, res) => {
   try {
     const db = await getDbPool();
     const { id } = req.params;
-    const { Title, Description, EventDate, VenueId } = req.body;
+    const { Title, Description, EventDate, VenueId, ImageUrl } = req.body;
 
     const result = await db.run(
-      'UPDATE Events SET Title = ?, Description = ?, EventDate = ?, VenueId = ? WHERE EventId = ?',
-      [Title, Description, EventDate, VenueId, id]
+      'UPDATE Events SET Title = ?, Description = ?, EventDate = ?, VenueId = ?, ImageUrl = ? WHERE EventId = ?',
+      [Title, Description, EventDate, VenueId, ImageUrl || null, id]
     );
 
     if (result.changes === 0) {

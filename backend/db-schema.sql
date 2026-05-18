@@ -183,7 +183,7 @@ CREATE INDEX idx_Ratings_ClientId ON Ratings(ClientId);
 CREATE TABLE Partners (
   id INT IDENTITY(1,1) PRIMARY KEY,
   name NVARCHAR(200) NOT NULL,
-  logo_url NVARCHAR(500),
+  logo_url NVARCHAR(MAX),
   link NVARCHAR(500),
   description NVARCHAR(MAX),
   created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
