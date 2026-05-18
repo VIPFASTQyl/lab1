@@ -1,0 +1,12 @@
+export { DashboardPage } from './DashboardPage';
+export { EventsListPage } from './EventsListPage';
+export { EventFormPage } from './EventFormPage';
+export { OrdersPage } from './OrdersPage';
+export { CustomersPage } from './CustomersPage';
+export { DiscountsPage } from './DiscountsPage';
+export { ReviewsPage } from './ReviewsPage';
+export { LocationsPage } from './LocationsPage';
+export { SectorsPage } from './SectorsPage';
+export { TicketsPage } from './TicketsPage';
+export { OrganizersPage } from './OrganizersPage';
+export { ReportsPage } from './ReportsPage';
