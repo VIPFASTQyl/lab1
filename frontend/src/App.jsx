@@ -7,6 +7,9 @@ import {
   EventDetailPage,
   SeatSelectionPage,
   CheckoutPage
+  ,
+  LoginPage,
+  RegisterPage
 } from './pages';
 
 // Admin imports
@@ -54,6 +57,8 @@ export const App = () => {
   return (
     <Router>
       <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
         {/* Public User Routes */}
         <Route
           path="/*"

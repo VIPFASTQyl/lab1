@@ -1,4 +1,5 @@
-export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// Use Vite's environment variables in the browser (prefixed with VITE_)
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const CATEGORIES = [
   { value: 'concert', label: 'Concert' },

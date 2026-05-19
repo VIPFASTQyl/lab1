@@ -3,3 +3,5 @@ export { EventsListingPage } from './EventsListingPage';
 export { EventDetailPage } from './EventDetailPage';
 export { SeatSelectionPage } from './SeatSelectionPage';
 export { CheckoutPage } from './CheckoutPage';
+export { LoginPage } from './LoginPage';
+export { RegisterPage } from './RegisterPage';
