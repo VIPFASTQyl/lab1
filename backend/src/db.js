@@ -112,12 +112,15 @@ async function createTablesIfNotExist() {
         EventId INT AUTO_INCREMENT PRIMARY KEY,
         Title VARCHAR(255) NOT NULL,
         Description TEXT,
+        Category VARCHAR(50) NOT NULL,
         EventDate DATETIME NOT NULL,
+        StartTime TIME,
+        EndTime TIME,
         VenueId INT NOT NULL,
-        OrgId INT,
-        AvailableTickets INT,
-        Price DECIMAL(10, 2),
+        Status VARCHAR(50) NOT NULL DEFAULT 'Upcoming',
+        ImageUrl TEXT,
         CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (VenueId) REFERENCES Venues(VenueId) ON DELETE CASCADE
       )`,
       

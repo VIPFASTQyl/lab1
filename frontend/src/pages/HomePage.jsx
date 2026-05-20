@@ -12,19 +12,19 @@ export const HomePage = () => {
     {
       id: 1,
       title: 'Electronic Music Festival 2024',
-      image: 'https://via.placeholder.com/1200x400?text=Music+Festival',
+      image: 'https://picsum.photos/1200/400?random=1',
       category: 'Festival',
     },
     {
       id: 2,
       title: 'Live Concert - The Weeknd',
-      image: 'https://via.placeholder.com/1200x400?text=Live+Concert',
+      image: 'https://picsum.photos/1200/400?random=2',
       category: 'Concert',
     },
     {
       id: 3,
       title: 'Championship Finals',
-      image: 'https://via.placeholder.com/1200x400?text=Sports',
+      image: 'https://picsum.photos/1200/400?random=3',
       category: 'Sports',
     },
   ];
@@ -44,7 +44,7 @@ export const HomePage = () => {
     {
       id: 1,
       title: 'Summer Music Festival',
-      image: 'https://via.placeholder.com/300x400?text=Event+1',
+      image: 'https://picsum.photos/300/400?random=4',
       date: '2024-06-15',
       location: 'New York, USA',
       category: 'Festival',
@@ -54,7 +54,7 @@ export const HomePage = () => {
     {
       id: 2,
       title: 'Broadway Show Night',
-      image: 'https://via.placeholder.com/300x400?text=Event+2',
+      image: 'https://picsum.photos/300/400?random=5',
       date: '2024-06-20',
       location: 'New York, USA',
       category: 'Theater',
@@ -64,7 +64,7 @@ export const HomePage = () => {
     {
       id: 3,
       title: 'NBA Finals Game 5',
-      image: 'https://via.placeholder.com/300x400?text=Event+3',
+      image: 'https://picsum.photos/300/400?random=6',
       date: '2024-06-25',
       location: 'Los Angeles, USA',
       category: 'Sports',
@@ -74,7 +74,7 @@ export const HomePage = () => {
     {
       id: 4,
       title: 'Tech Conference 2024',
-      image: 'https://via.placeholder.com/300x400?text=Event+4',
+      image: 'https://picsum.photos/300/400?random=7',
       date: '2024-07-01',
       location: 'San Francisco, USA',
       category: 'Workshop',
@@ -84,7 +84,7 @@ export const HomePage = () => {
     {
       id: 5,
       title: 'Comedy Night Special',
-      image: 'https://via.placeholder.com/300x400?text=Event+5',
+      image: 'https://picsum.photos/300/400?random=8',
       date: '2024-07-05',
       location: 'Chicago, USA',
       category: 'Comedy',
@@ -94,7 +94,7 @@ export const HomePage = () => {
     {
       id: 6,
       title: 'Jazz Night at the Club',
-      image: 'https://via.placeholder.com/300x400?text=Event+6',
+      image: 'https://picsum.photos/300/400?random=9',
       date: '2024-07-10',
       location: 'New Orleans, USA',
       category: 'Concert',

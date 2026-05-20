@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/layout';
 import {
   HomePage,
@@ -40,6 +40,12 @@ const NotFound = () => (
   </div>
 );
 
+// Root redirect component - checks if user is authenticated
+const RootRedirect = () => {
+  const token = localStorage.getItem('authToken');
+  return token ? <Navigate to="/home" replace /> : <Navigate to="/login" replace />;
+};
+
 export const App = () => {
   const [isDark, setIsDark] = useState(false);
   const setAdmin = useAdminStore((state) => state.setAdmin);
@@ -59,7 +65,7 @@ export const App = () => {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        {/* Public User Routes */}
+        {/* Public User Routes - Protected by auth check in Layout */}
         <Route
           path="/*"
           element={
@@ -70,57 +76,58 @@ export const App = () => {
                 <Route path="/events/:id" element={<EventDetailPage />} />
                 <Route path="/seat-selection/:eventId" element={<SeatSelectionPage />} />
                 <Route path="/checkout" element={<CheckoutPage />} />
+                
+                {/* Admin Routes */}
+                <Route
+                  path="/admin/*"
+                  element={
+                    <PrivateAdminRoute>
+                      <AdminLayout isDark={isDark} setIsDark={setIsDark}>
+                        <Routes>
+                          <Route path="/" element={<DashboardPage />} />
+                          
+                          {/* Events */}
+                          <Route path="/events" element={<AdminEventsListPage />} />
+                          <Route path="/events/new" element={<EventFormPage />} />
+                          <Route path="/events/:id/edit" element={<EventFormPage />} />
+                          
+                          {/* Locations */}
+                          <Route path="/locations" element={<LocationsPage />} />
+                          
+                          {/* Sectors */}
+                          <Route path="/sectors" element={<SectorsPage />} />
+                          
+                          {/* Tickets */}
+                          <Route path="/tickets" element={<TicketsPage />} />
+                          
+                          {/* Orders */}
+                          <Route path="/orders" element={<OrdersPage />} />
+                          
+                          {/* Customers */}
+                          <Route path="/customers" element={<CustomersPage />} />
+                          
+                          {/* Organizers */}
+                          <Route path="/organizers" element={<OrganizersPage />} />
+                          
+                          {/* Discounts */}
+                          <Route path="/discounts" element={<DiscountsPage />} />
+                          
+                          {/* Reviews */}
+                          <Route path="/reviews" element={<ReviewsPage />} />
+                          
+                          {/* Reports */}
+                          <Route path="/reports" element={<ReportsPage />} />
+                          
+                          <Route path="*" element={<NotFound />} />
+                        </Routes>
+                      </AdminLayout>
+                    </PrivateAdminRoute>
+                  }
+                />
+                
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Layout>
-          }
-        />
-
-        {/* Admin Routes */}
-        <Route
-          path="/admin/*"
-          element={
-            <PrivateAdminRoute>
-              <AdminLayout isDark={isDark} setIsDark={setIsDark}>
-                <Routes>
-                  <Route path="/" element={<DashboardPage />} />
-                  
-                  {/* Events */}
-                  <Route path="/events" element={<AdminEventsListPage />} />
-                  <Route path="/events/new" element={<EventFormPage />} />
-                  <Route path="/events/:id/edit" element={<EventFormPage />} />
-                  
-                  {/* Locations */}
-                  <Route path="/locations" element={<LocationsPage />} />
-                  
-                  {/* Sectors */}
-                  <Route path="/sectors" element={<SectorsPage />} />
-                  
-                  {/* Tickets */}
-                  <Route path="/tickets" element={<TicketsPage />} />
-                  
-                  {/* Orders */}
-                  <Route path="/orders" element={<OrdersPage />} />
-                  
-                  {/* Customers */}
-                  <Route path="/customers" element={<CustomersPage />} />
-                  
-                  {/* Organizers */}
-                  <Route path="/organizers" element={<OrganizersPage />} />
-                  
-                  {/* Discounts */}
-                  <Route path="/discounts" element={<DiscountsPage />} />
-                  
-                  {/* Reviews */}
-                  <Route path="/reviews" element={<ReviewsPage />} />
-                  
-                  {/* Reports */}
-                  <Route path="/reports" element={<ReportsPage />} />
-                  
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </AdminLayout>
-            </PrivateAdminRoute>
           }
         />
       </Routes>

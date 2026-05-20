@@ -19,6 +19,7 @@ export const RegisterPage = () => {
       const token = res?.token;
       if (!token) throw new Error('No token returned from server');
       localStorage.setItem('authToken', token);
+      localStorage.setItem('userName', name);
       navigate('/');
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Registration failed');

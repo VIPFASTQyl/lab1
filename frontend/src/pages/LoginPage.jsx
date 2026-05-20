@@ -18,7 +18,23 @@ export const LoginPage = () => {
       const token = res?.token;
       if (!token) throw new Error('No token returned from server');
       localStorage.setItem('authToken', token);
-      navigate('/');
+      
+      // Decode JWT to get user info
+      const tokenParts = token.split('.');
+      if (tokenParts.length === 3) {
+        const payload = JSON.parse(atob(tokenParts[1]));
+        localStorage.setItem('userName', payload.name || 'User');
+        localStorage.setItem('isAdmin', payload.isAdmin ? 'true' : 'false');
+        
+        // Redirect to admin page if user is admin
+        if (payload.isAdmin) {
+          navigate('/admin');
+        } else {
+          navigate('/');
+        }
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Login failed');
     } finally {

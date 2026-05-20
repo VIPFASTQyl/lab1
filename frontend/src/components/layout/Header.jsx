@@ -1,11 +1,24 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Menu, X, Sun, Moon, ShoppingCart, User } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Menu, X, Sun, Moon, ShoppingCart, User, LogOut } from 'lucide-react';
 import { Button } from '../ui';
 
 export const Header = ({ onCartClick, cartItemsCount = 0 }) => {
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [userName, setUserName] = useState('');
+
+  // Get user name from localStorage on mount
+  React.useEffect(() => {
+    const storedName = localStorage.getItem('userName');
+    setUserName(storedName || '');
+  }, []);
+
+  const getInitial = () => {
+    return userName ? userName.charAt(0).toUpperCase() : 'U';
+  };
 
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode);
@@ -16,11 +29,24 @@ export const Header = ({ onCartClick, cartItemsCount = 0 }) => {
     }
   };
 
-  const navigationItems = [
-    { label: 'Home', href: '/' },
-    { label: 'Events', href: '/events' },
-    { label: 'Categories', href: '/events?view=categories' },
-  ];
+  const handleLogout = () => {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userName');
+    setIsAccountOpen(false);
+    navigate('/login');
+  };
+
+  const navigationItems = localStorage.getItem('isAdmin') === 'true'
+    ? [
+        { label: 'Home', href: '/' },
+        { label: 'Events', href: '/admin/events' },
+        { label: 'Admin', href: '/admin' },
+      ]
+    : [
+        { label: 'Home', href: '/' },
+        { label: 'Events', href: '/events' },
+        { label: 'Categories', href: '/events?view=categories' },
+      ];
 
   return (
     <header className="sticky top-0 z-50 bg-white dark:bg-dark-900 border-b border-gray-200 dark:border-dark-700 shadow-sm">
@@ -78,10 +104,31 @@ export const Header = ({ onCartClick, cartItemsCount = 0 }) => {
             </button>
 
             {/* User Menu */}
-            <button className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-800 transition-colors">
-              <User size={20} />
-              <span className="text-sm font-medium">Account</span>
-            </button>
+            <div className="hidden md:relative md:flex items-center">
+              <button
+                onClick={() => setIsAccountOpen(!isAccountOpen)}
+                title={`Account: ${userName || 'Guest'}`}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-800 transition-colors"
+              >
+                <div className="w-8 h-8 rounded-full bg-primary-600 dark:bg-primary-500 flex items-center justify-center text-white font-semibold text-sm">
+                  {getInitial()}
+                </div>
+                <span className="text-sm font-medium">Account</span>
+              </button>
+
+              {/* Account Dropdown */}
+              {isAccountOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-dark-800 rounded-lg shadow-xl border border-gray-200 dark:border-dark-700">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-medium first:rounded-t-lg"
+                  >
+                    <LogOut size={18} />
+                    Log Out
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* Mobile Menu Button */}
             <button
@@ -100,6 +147,17 @@ export const Header = ({ onCartClick, cartItemsCount = 0 }) => {
         {/* Mobile Menu */}
         {isMenuOpen && (
           <nav className="md:hidden pb-4 border-t border-gray-200 dark:border-dark-700">
+            {/* User Info Section */}
+            <div className="px-4 py-4 border-b border-gray-200 dark:border-dark-700 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary-600 dark:bg-primary-500 flex items-center justify-center text-white font-semibold">
+                {getInitial()}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">{userName || 'Guest'}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Your Account</p>
+              </div>
+            </div>
+
             {navigationItems.map((item) => (
               <Link
                 key={item.label}
@@ -110,12 +168,14 @@ export const Header = ({ onCartClick, cartItemsCount = 0 }) => {
                 {item.label}
               </Link>
             ))}
-            <div className="px-4 py-3">
-              <Link to="/login" className="w-full">
-                <Button variant="primary" size="md" className="w-full">
-                  Sign In
-                </Button>
-              </Link>
+            <div className="px-4 py-3 border-t border-gray-200 dark:border-dark-700">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors font-medium"
+              >
+                <LogOut size={18} />
+                Log Out
+              </button>
             </div>
           </nav>
         )}

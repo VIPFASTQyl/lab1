@@ -12,7 +12,7 @@ export const EventsListingPage = () => {
     {
       id: 1,
       title: 'Summer Music Festival',
-      image: 'https://via.placeholder.com/300x400?text=Event+1',
+      image: 'https://picsum.photos/300/400?random=10',
       date: '2024-06-15',
       location: 'New York, USA',
       category: 'Festival',
@@ -23,7 +23,7 @@ export const EventsListingPage = () => {
     {
       id: 2,
       title: 'Broadway Show Night',
-      image: 'https://via.placeholder.com/300x400?text=Event+2',
+      image: 'https://picsum.photos/300/400?random=11',
       date: '2024-06-20',
       location: 'New York, USA',
       category: 'Theater',
@@ -34,7 +34,7 @@ export const EventsListingPage = () => {
     {
       id: 3,
       title: 'NBA Finals Game 5',
-      image: 'https://via.placeholder.com/300x400?text=Event+3',
+      image: 'https://picsum.photos/300/400?random=12',
       date: '2024-06-25',
       location: 'Los Angeles, USA',
       category: 'Sports',
@@ -45,7 +45,7 @@ export const EventsListingPage = () => {
     {
       id: 4,
       title: 'Tech Conference 2024',
-      image: 'https://via.placeholder.com/300x400?text=Event+4',
+      image: 'https://picsum.photos/300/400?random=13',
       date: '2024-07-01',
       location: 'San Francisco, USA',
       category: 'Workshop',
@@ -56,7 +56,7 @@ export const EventsListingPage = () => {
     {
       id: 5,
       title: 'Comedy Night Special',
-      image: 'https://via.placeholder.com/300x400?text=Event+5',
+      image: 'https://picsum.photos/300/400?random=14',
       date: '2024-07-05',
       location: 'Chicago, USA',
       category: 'Comedy',
@@ -67,7 +67,7 @@ export const EventsListingPage = () => {
     {
       id: 6,
       title: 'Jazz Night at the Club',
-      image: 'https://via.placeholder.com/300x400?text=Event+6',
+      image: 'https://picsum.photos/300/400?random=15',
       date: '2024-07-10',
       location: 'New Orleans, USA',
       category: 'Concert',
@@ -78,7 +78,7 @@ export const EventsListingPage = () => {
     {
       id: 7,
       title: 'Modern Art Exhibition',
-      image: 'https://via.placeholder.com/300x400?text=Event+7',
+      image: 'https://picsum.photos/300/400?random=16',
       date: '2024-07-15',
       location: 'Chicago, USA',
       category: 'Festival',
@@ -89,7 +89,7 @@ export const EventsListingPage = () => {
     {
       id: 8,
       title: 'Marathon Championship',
-      image: 'https://via.placeholder.com/300x400?text=Event+8',
+      image: 'https://picsum.photos/300/400?random=17',
       date: '2024-07-20',
       location: 'Boston, USA',
       category: 'Sports',

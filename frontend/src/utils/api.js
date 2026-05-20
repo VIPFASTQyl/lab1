@@ -38,6 +38,10 @@ export const eventApi = {
   getById: (id) => api.get(`/events/${id}`),
   search: (query) => api.get('/events/search', { params: { q: query } }),
   filter: (filters) => api.get('/events/filter', { params: filters }),
+  create: (data) => api.post('/events', data),
+  update: (id, data) => api.put(`/events/${id}`, data),
+  delete: (id) => api.delete(`/events/${id}`),
+  getVenues: () => api.get('/events/venues'),
 };
 
 export const ticketApi = {

@@ -250,8 +250,8 @@ router.post('/', async (req, res) => {
     }
 
     const result = await db.run(
-      'INSERT INTO Events (Title, Description, EventDate, VenueId, ImageUrl) VALUES (?, ?, ?, ?, ?)',
-      [Title, Description || null, EventDate, VenueId, ImageUrl || null]
+      'INSERT INTO Events (Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status, ImageUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [Title, Description || null, Category || null, EventDate, StartTime || null, EndTime || null, VenueId, Status || 'Upcoming', ImageUrl || null]
     );
     
     res.status(201).json({ EventId: result.lastID, Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status, ImageUrl });
@@ -266,11 +266,11 @@ router.put('/:id', async (req, res) => {
   try {
     const db = await getDbPool();
     const { id } = req.params;
-    const { Title, Description, EventDate, VenueId, ImageUrl } = req.body;
+    const { Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status, ImageUrl } = req.body;
 
     const result = await db.run(
-      'UPDATE Events SET Title = ?, Description = ?, EventDate = ?, VenueId = ?, ImageUrl = ? WHERE EventId = ?',
-      [Title, Description, EventDate, VenueId, ImageUrl || null, id]
+      'UPDATE Events SET Title = ?, Description = ?, Category = ?, EventDate = ?, StartTime = ?, EndTime = ?, VenueId = ?, Status = ?, ImageUrl = ? WHERE EventId = ?',
+      [Title, Description, Category || null, EventDate, StartTime || null, EndTime || null, VenueId, Status || 'Upcoming', ImageUrl || null, id]
     );
 
     if (result.changes === 0) {
