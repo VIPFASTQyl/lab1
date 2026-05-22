@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DataTable, StatusBadge } from '../components/common';
+import { eventApi } from '../../utils/api';
 
-// Mock data
+// Mock data - kept for fallback only
 const mockEvents = [
   {
     id: 1,
@@ -54,16 +55,55 @@ const mockEvents = [
 
 export const EventsListPage = () => {
   const navigate = useNavigate();
-  const [events, setEvents] = useState(mockEvents);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch events on mount
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  const fetchEvents = async () => {
+    try {
+      setLoading(true);
+      const data = await eventApi.getAll();
+      // Transform database format to table format
+      const transformedEvents = (data || []).map(event => ({
+        id: event.EventId,
+        title: event.Title,
+        date: event.EventDate,
+        location: 'TBD', // Will need venue lookup
+        status: event.Status?.toLowerCase() === 'upcoming' ? 'active' : 'draft',
+        ticketsSold: 0, // Will need to query ticket sales
+        revenue: '$0', // Will need to calculate
+        ...event // Keep original data for edit/delete
+      }));
+      setEvents(transformedEvents);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch events:', err);
+      setError('Failed to load events');
+      setEvents(mockEvents); // Fallback to mock data
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleEdit = (event) => {
     navigate(`/admin/events/${event.id}/edit`, { state: { event } });
   };
 
-  const handleDelete = (event) => {
+  const handleDelete = async (event) => {
     if (window.confirm(`Are you sure you want to delete "${event.title}"?`)) {
-      setEvents(events.filter(e => e.id !== event.id));
-      alert('Event deleted successfully');
+      try {
+        await eventApi.delete(event.id);
+        setEvents(events.filter(e => e.id !== event.id));
+        alert('Event deleted successfully');
+      } catch (err) {
+        console.error('Delete failed:', err);
+        alert('Failed to delete event');
+      }
     }
   };
 
@@ -78,35 +118,49 @@ export const EventsListPage = () => {
         <p className="text-gray-600 dark:text-gray-400 mt-2">Manage all your events, create new ones, and track performance</p>
       </div>
 
-      <DataTable
-        title="All Events"
-        columns={[
-          { key: 'title', label: 'Event Title', sortable: true },
-          { key: 'date', label: 'Date', sortable: true },
-          { key: 'location', label: 'Location', sortable: true },
-          { key: 'ticketsSold', label: 'Tickets Sold', sortable: true },
-          { key: 'revenue', label: 'Revenue', sortable: true },
-          {
-            key: 'status',
-            label: 'Status',
-            render: (val) => <StatusBadge status={val} />,
-          },
-        ]}
-        data={events}
-        searchable={true}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onView={handleView}
-        addButton={
-          <button
-            onClick={() => navigate('/admin/events/new')}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-          >
-            <Plus className="h-5 w-5" />
-            New Event
-          </button>
-        }
-      />
+      {loading && (
+        <div className="text-center py-12">
+          <p className="text-gray-600 dark:text-gray-400 text-lg">Loading events...</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-400">
+          <p>{error}</p>
+        </div>
+      )}
+
+      {!loading && (
+        <DataTable
+          title="All Events"
+          columns={[
+            { key: 'title', label: 'Event Title', sortable: true },
+            { key: 'date', label: 'Date', sortable: true },
+            { key: 'location', label: 'Location', sortable: true },
+            { key: 'ticketsSold', label: 'Tickets Sold', sortable: true },
+            { key: 'revenue', label: 'Revenue', sortable: true },
+            {
+              key: 'status',
+              label: 'Status',
+              render: (val) => <StatusBadge status={val} />,
+            },
+          ]}
+          data={events}
+          searchable={true}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onView={handleView}
+          addButton={
+            <button
+              onClick={() => navigate('/admin/events/new')}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            >
+              <Plus className="h-5 w-5" />
+              New Event
+            </button>
+          }
+        />
+      )}
     </div>
   );
 };
