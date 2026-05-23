@@ -1,6 +1,7 @@
 import React from 'react';
-import { Calendar, MapPin, Clock, User, Share2 } from 'lucide-react';
+import { Calendar, MapPin, Clock, Tag, Share2 } from 'lucide-react';
 import { Button, Badge } from '../ui';
+import { DEFAULT_EVENT_IMAGE } from '../../constants';
 
 export const EventHeaderSection = ({ event }) => {
   return (
@@ -8,7 +9,7 @@ export const EventHeaderSection = ({ event }) => {
       {/* Hero Image */}
       <div className="relative h-96 md:h-screen max-h-screen w-full bg-gradient-to-br from-primary-600 to-secondary-600 overflow-hidden">
         <img
-          src={event.image || 'https://via.placeholder.com/1200'}
+          src={event.image || DEFAULT_EVENT_IMAGE}
           alt={event.title}
           className="w-full h-full object-cover"
         />
@@ -25,6 +26,9 @@ export const EventHeaderSection = ({ event }) => {
                 <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 leading-tight">
                   {event.title}
                 </h1>
+                {event.description && (
+                  <p className="max-w-3xl text-white/85 text-lg leading-relaxed">{event.description}</p>
+                )}
               </div>
               <Button variant="secondary" size="lg">
                 Share Event
@@ -73,11 +77,11 @@ export const EventHeaderSection = ({ event }) => {
 
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <User className="text-primary-600 dark:text-primary-400" size={24} />
-              <label className="text-sm font-semibold text-gray-600 dark:text-gray-400">Organizer</label>
+              <Tag className="text-primary-600 dark:text-primary-400" size={24} />
+              <label className="text-sm font-semibold text-gray-600 dark:text-gray-400">Status</label>
             </div>
             <p className="text-lg font-bold text-gray-900 dark:text-white">
-              {event.organizer || 'TBA'}
+              {event.status || 'Upcoming'}
             </p>
           </div>
         </div>

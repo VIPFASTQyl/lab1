@@ -194,12 +194,12 @@ async function createTablesIfNotExist() {
       `CREATE TABLE IF NOT EXISTS Ratings (
         RatingId INT AUTO_INCREMENT PRIMARY KEY,
         EventId INT NOT NULL,
-        UserId INT NOT NULL,
+        ClientId INT NOT NULL,
         Rating INT,
         Comment TEXT,
         CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (EventId) REFERENCES Events(EventId) ON DELETE CASCADE,
-        FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE
+        FOREIGN KEY (ClientId) REFERENCES Clients(ClientId) ON DELETE CASCADE
       )`,
       
       `CREATE TABLE IF NOT EXISTS Discounts (

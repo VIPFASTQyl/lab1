@@ -10,3 +10,4 @@ export { SectorsPage } from './SectorsPage';
 export { TicketsPage } from './TicketsPage';
 export { OrganizersPage } from './OrganizersPage';
 export { ReportsPage } from './ReportsPage';
+export { AdminPartnersPage } from './AdminPartnersPage';

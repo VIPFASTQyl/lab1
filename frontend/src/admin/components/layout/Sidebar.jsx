@@ -49,6 +49,7 @@ const menuItems = [
   { label: 'Organizers', icon: Users, path: '/admin/organizers' },
   { label: 'Discounts', icon: Tag, path: '/admin/discounts' },
   { label: 'Reviews', icon: Star, path: '/admin/reviews' },
+  { label: 'Partners', icon: Users, path: '/admin/partners' },
   { label: 'Reports', icon: BarChart3, path: '/admin/reports' },
 ];
 

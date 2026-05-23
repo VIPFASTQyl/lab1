@@ -40,3 +40,6 @@ export const STATUS_CODES = {
   NOT_FOUND: 404,
   SERVER_ERROR: 500,
 };
+
+// Default event image URL; can be overridden with VITE_DEFAULT_EVENT_IMAGE
+export const DEFAULT_EVENT_IMAGE = import.meta.env.VITE_DEFAULT_EVENT_IMAGE || 'https://picsum.photos/id/1069/1200/800';

@@ -4,7 +4,13 @@ import { authMiddleware } from './middleware-auth.js';
 
 const router = express.Router();
 
-router.use(authMiddleware);
+// Keep read access for ratings public, but protect all write operations.
+router.use((req, res, next) => {
+  if (req.method === 'GET' && req.path.startsWith('/ratings')) {
+    return next();
+  }
+  return authMiddleware(req, res, next);
+});
 
 // ===== PAYMENTS =====
 
@@ -271,7 +277,16 @@ router.delete('/discounts/:id', async (req, res) => {
 router.get('/ratings', async (req, res) => {
   try {
     const db = await getDbPool();
-    let query = `SELECT RatingId, EventId, ClientId, Rating, Comment, RatingDate FROM Ratings`;
+    let query = `SELECT r.RatingId,
+                        r.EventId,
+                        r.ClientId,
+                        r.Rating,
+                        r.Comment,
+                        r.RatingDate,
+                        c.FirstName,
+                        c.LastName
+                 FROM Ratings r
+                 LEFT JOIN Clients c ON c.ClientId = r.ClientId`;
     const params = [];
     
     if (req.query.eventId) {
@@ -286,9 +301,17 @@ router.get('/ratings', async (req, res) => {
       }
       params.push(req.query.clientId);
     }
-    query += ' ORDER BY RatingDate DESC';
+    query += ' ORDER BY r.RatingDate DESC';
     const results = await db.all(query, params);
-    return res.json(results);
+    return res.json((results || []).map((row) => ({
+      id: row.RatingId,
+      eventId: row.EventId,
+      clientId: row.ClientId,
+      rating: row.Rating,
+      comment: row.Comment,
+      date: row.RatingDate,
+      name: [row.FirstName, row.LastName].filter(Boolean).join(' ') || `User ${row.ClientId}`,
+    })));
   } catch (err) {
     console.error('Get ratings error', err);
     return res.status(500).json({ message: 'Internal server error' });
@@ -312,19 +335,70 @@ router.get('/ratings/:id', async (req, res) => {
 
 // POST /api/extras/ratings
 router.post('/ratings', async (req, res) => {
-  const { eventId, clientId, rating, comment } = req.body;
-  if (!eventId || !clientId || rating === undefined) {
-    return res.status(400).json({ message: 'EventId, ClientId, and Rating are required' });
+  const { eventId, rating, comment } = req.body;
+  if (!eventId || rating === undefined) {
+    return res.status(400).json({ message: 'EventId and Rating are required' });
   }
   if (rating < 1 || rating > 5) {
     return res.status(400).json({ message: 'Rating must be between 1 and 5' });
   }
   try {
     const db = await getDbPool();
-    const result = await db.run(`INSERT INTO Ratings (EventId, ClientId, Rating, Comment)
-              VALUES (?, ?, ?, ?)`, [eventId, clientId, rating, comment || null]);
-    const inserted = await db.all('SELECT RatingId, EventId, ClientId, Rating, Comment, RatingDate FROM Ratings WHERE RatingId = ?', [result.lastID]);
-    return res.status(201).json(inserted[0]);
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const eventExists = await db.get('SELECT EventId FROM Events WHERE EventId = ?', [eventId]);
+    if (!eventExists) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    const user = await db.get('SELECT Id, Name, Email FROM Users WHERE Id = ?', [userId]);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    let client = await db.get('SELECT ClientId, FirstName, LastName, Email FROM Clients WHERE Email = ?', [user.Email]);
+    if (!client) {
+      const nameParts = String(user.Name || '').trim().split(/\s+/);
+      const firstName = nameParts[0] || 'User';
+      const lastName = nameParts.slice(1).join(' ') || 'Member';
+      const clientResult = await db.run(
+        'INSERT INTO Clients (FirstName, LastName, Email) VALUES (?, ?, ?)',
+        [firstName, lastName, user.Email]
+      );
+      client = { ClientId: clientResult.lastID };
+    }
+
+    const result = await db.run(
+      'INSERT INTO Ratings (EventId, ClientId, Rating, Comment, RatingDate) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
+      [eventId, client.ClientId, rating, comment || null]
+    );
+    const inserted = await db.all(
+      `SELECT r.RatingId,
+              r.EventId,
+              r.ClientId,
+              r.Rating,
+              r.Comment,
+              r.RatingDate,
+              c.FirstName,
+              c.LastName
+       FROM Ratings r
+       LEFT JOIN Clients c ON c.ClientId = r.ClientId
+       WHERE r.RatingId = ?`,
+      [result.lastID]
+    );
+    const row = inserted[0];
+    return res.status(201).json({
+      id: row.RatingId,
+      eventId: row.EventId,
+      clientId: row.ClientId,
+      rating: row.Rating,
+      comment: row.Comment,
+      date: row.RatingDate,
+      name: [row.FirstName, row.LastName].filter(Boolean).join(' ') || `User ${row.ClientId}`,
+    });
   } catch (err) {
     console.error('Create rating error', err);
     return res.status(500).json({ message: 'Internal server error' });

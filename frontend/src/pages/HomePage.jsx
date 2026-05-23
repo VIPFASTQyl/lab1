@@ -1,33 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, ArrowRight } from 'lucide-react';
 import { Button, Input, Badge } from '../components/ui';
 import { Carousel, EventCard } from '../components/common';
+import { eventApi } from '../utils/api';
+import { DEFAULT_EVENT_IMAGE } from '../constants';
 
 export const HomePage = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Mock featured events for carousel
-  const featuredEvents = [
-    {
-      id: 1,
-      title: 'Electronic Music Festival 2024',
-      image: 'https://picsum.photos/1200/400?random=1',
-      category: 'Festival',
-    },
-    {
-      id: 2,
-      title: 'Live Concert - The Weeknd',
-      image: 'https://picsum.photos/1200/400?random=2',
-      category: 'Concert',
-    },
-    {
-      id: 3,
-      title: 'Championship Finals',
-      image: 'https://picsum.photos/1200/400?random=3',
-      category: 'Sports',
-    },
-  ];
+  const [events, setEvents] = useState([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
+  const [eventsError, setEventsError] = useState(null);
 
   // Mock category data
   const categories = [
@@ -39,69 +23,33 @@ export const HomePage = () => {
     { id: 6, icon: '📚', name: 'Workshop', color: 'from-blue-400 to-blue-600' },
   ];
 
-  // Mock upcoming events
-  const upcomingEvents = [
-    {
-      id: 1,
-      title: 'Summer Music Festival',
-      image: 'https://picsum.photos/300/400?random=4',
-      date: '2024-06-15',
-      location: 'New York, USA',
-      category: 'Festival',
-      priceFrom: 45,
-      rating: 4.8,
-    },
-    {
-      id: 2,
-      title: 'Broadway Show Night',
-      image: 'https://picsum.photos/300/400?random=5',
-      date: '2024-06-20',
-      location: 'New York, USA',
-      category: 'Theater',
-      priceFrom: 65,
-      rating: 4.9,
-    },
-    {
-      id: 3,
-      title: 'NBA Finals Game 5',
-      image: 'https://picsum.photos/300/400?random=6',
-      date: '2024-06-25',
-      location: 'Los Angeles, USA',
-      category: 'Sports',
-      priceFrom: 150,
-      rating: 4.7,
-    },
-    {
-      id: 4,
-      title: 'Tech Conference 2024',
-      image: 'https://picsum.photos/300/400?random=7',
-      date: '2024-07-01',
-      location: 'San Francisco, USA',
-      category: 'Workshop',
-      priceFrom: 99,
-      rating: 4.6,
-    },
-    {
-      id: 5,
-      title: 'Comedy Night Special',
-      image: 'https://picsum.photos/300/400?random=8',
-      date: '2024-07-05',
-      location: 'Chicago, USA',
-      category: 'Comedy',
-      priceFrom: 40,
-      rating: 4.8,
-    },
-    {
-      id: 6,
-      title: 'Jazz Night at the Club',
-      image: 'https://picsum.photos/300/400?random=9',
-      date: '2024-07-10',
-      location: 'New Orleans, USA',
-      category: 'Concert',
-      priceFrom: 35,
-      rating: 4.9,
-    },
-  ];
+  // featuredEvents and upcomingEvents are derived from API results below
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoadingEvents(true);
+        const data = await eventApi.getAll();
+        const list = (data || []).map(ev => ({
+          id: ev.EventId,
+          Title: ev.Title,
+          title: ev.Title,
+          image: ev.ImageUrl || DEFAULT_EVENT_IMAGE,
+          category: ev.Category || 'Other',
+          date: ev.EventDate,
+          description: ev.Description || ev.Title,
+        }));
+        setEvents(list);
+        setEventsError(null);
+      } catch (err) {
+        console.error('Failed to load events for home:', err);
+        setEventsError('Failed to load events');
+      } finally {
+        setLoadingEvents(false);
+      }
+    };
+    load();
+  }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -156,30 +104,36 @@ export const HomePage = () => {
       <section className="py-12 md:py-20 bg-white dark:bg-dark-900">
         <div className="page-container">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Featured Events</h2>
-          <Carousel
-            items={featuredEvents}
-            renderItem={(event) => (
-              <Link
-                to={`/events/${event.id}`}
-                className="relative w-full h-full group cursor-pointer"
-              >
-                <img
-                  src={event.image}
-                  alt={event.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 text-white">
-                  <Badge variant="secondary" size="md" className="mb-4">
-                    {event.category}
-                  </Badge>
-                  <h3 className="text-3xl md:text-4xl font-bold">{event.title}</h3>
-                </div>
-              </Link>
-            )}
-            autoPlay={true}
-            interval={6000}
-          />
+          {loadingEvents ? (
+            <div className="text-center py-12">Loading featured events...</div>
+          ) : events.length === 0 ? (
+            <div className="text-center py-12">No events available</div>
+          ) : (
+            <Carousel
+              items={events.slice(0, 3)}
+              renderItem={(event) => (
+                <Link
+                  to={`/events/${event.id}`}
+                  className="relative w-full h-full group cursor-pointer"
+                >
+                  <img
+                    src={event.image}
+                    alt={event.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 text-white">
+                    <Badge variant="secondary" size="md" className="mb-4">
+                      {event.category}
+                    </Badge>
+                    <h3 className="text-3xl md:text-4xl font-bold">{event.title}</h3>
+                  </div>
+                </Link>
+              )}
+              autoPlay={true}
+              interval={6000}
+            />
+          )}
         </div>
       </section>
 
@@ -218,11 +172,17 @@ export const HomePage = () => {
             </Link>
           </div>
 
-          <div className="grid-responsive">
-            {upcomingEvents.map((event) => (
-              <EventCard key={event.id} event={event} />
-            ))}
-          </div>
+          {loadingEvents ? (
+            <div className="text-center py-12">Loading upcoming events...</div>
+          ) : events.length === 0 ? (
+            <div className="text-center py-12">No events available</div>
+          ) : (
+            <div className="grid-responsive">
+              {events.slice(0, 6).map((event) => (
+                <EventCard key={event.id} event={event} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

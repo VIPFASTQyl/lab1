@@ -45,7 +45,7 @@ export const Header = ({ onCartClick, cartItemsCount = 0 }) => {
     : [
         { label: 'Home', href: '/' },
         { label: 'Events', href: '/events' },
-        { label: 'Categories', href: '/events?view=categories' },
+        { label: 'Partners', href: '/partners' },
       ];
 
   return (

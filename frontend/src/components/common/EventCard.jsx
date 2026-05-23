@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin, Star, Heart } from 'lucide-react';
+import { Calendar, MapPin, Heart } from 'lucide-react';
 import { Badge } from '../ui';
+import { DEFAULT_EVENT_IMAGE } from '../../constants';
 
 export const EventCard = ({ event, variant = 'grid', onClick }) => {
   const [isFavorite, setIsFavorite] = React.useState(false);
@@ -13,7 +14,7 @@ export const EventCard = ({ event, variant = 'grid', onClick }) => {
           {/* Image */}
           <div className="w-32 h-32 flex-shrink-0 bg-gradient-to-br from-primary-400 to-secondary-400 overflow-hidden">
             <img
-              src={event.image || 'https://via.placeholder.com/128'}
+              src={event.image || DEFAULT_EVENT_IMAGE}
               alt={event.title}
               className="w-full h-full object-cover"
             />
@@ -57,7 +58,7 @@ export const EventCard = ({ event, variant = 'grid', onClick }) => {
       {/* Image Container */}
       <div className="relative h-48 bg-gradient-to-br from-primary-400 to-secondary-400 overflow-hidden group">
         <img
-          src={event.image || 'https://via.placeholder.com/300'}
+          src={event.image || DEFAULT_EVENT_IMAGE}
           alt={event.title}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
         />
@@ -90,15 +91,6 @@ export const EventCard = ({ event, variant = 'grid', onClick }) => {
           />
         </button>
 
-        {/* Rating */}
-        {event.rating && (
-          <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-white/95 dark:bg-dark-800/95 px-2 py-1 rounded-lg">
-            <Star size={16} className="fill-yellow-400 text-yellow-400" />
-            <span className="font-semibold text-sm text-gray-900 dark:text-white">
-              {event.rating}
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Content */}

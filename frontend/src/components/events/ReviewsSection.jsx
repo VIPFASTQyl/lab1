@@ -2,21 +2,32 @@ import React, { useState } from 'react';
 import { Star, UserCircle } from 'lucide-react';
 import { Button, Card, Input } from '../ui';
 
-export const ReviewsSection = ({ eventId, reviews = [] }) => {
+export const ReviewsSection = ({ eventId, reviews = [], onSubmitReview }) => {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
   const averageRating = reviews.length > 0
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
     : 0;
 
-  const handleSubmitReview = () => {
-    if (comment.trim()) {
-      console.log('Submit review:', { rating, comment });
+  const handleSubmitReview = async () => {
+    if (!comment.trim()) return;
+    try {
+      setSubmitting(true);
+      setSubmitError(null);
+      if (onSubmitReview) {
+        await onSubmitReview({ eventId, rating, comment });
+      }
       setComment('');
       setRating(5);
       setShowReviewForm(false);
+    } catch (err) {
+      setSubmitError(err?.response?.data?.message || err?.message || 'Failed to submit review');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -94,6 +105,12 @@ export const ReviewsSection = ({ eventId, reviews = [] }) => {
           <Card className="p-6 md:p-8 mb-8 animate-slide-up">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Share Your Experience</h3>
 
+            {submitError && (
+              <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200">
+                {submitError}
+              </div>
+            )}
+
             <div className="space-y-4 mb-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
@@ -136,9 +153,9 @@ export const ReviewsSection = ({ eventId, reviews = [] }) => {
               variant="primary"
               size="md"
               onClick={handleSubmitReview}
-              disabled={!comment.trim()}
+              disabled={!comment.trim() || submitting}
             >
-              Submit Review
+              {submitting ? 'Submitting...' : 'Submit Review'}
             </Button>
           </Card>
         )}

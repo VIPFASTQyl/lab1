@@ -44,18 +44,22 @@ router.get('/venues/:id', async (req, res) => {
 router.post('/venues', async (req, res) => {
   try {
     const db = await getDbPool();
-    const { Name, Country, City, Capacity } = req.body;
+    const { Name, Address, Country, City, Capacity } = req.body;
     
     if (!Name || !City) {
       return res.status(400).json({ message: 'Name and City are required' });
     }
 
+    // Live MySQL schema requires Address and does not include Country.
+    const normalizedAddress = Address || Country || `${City} Venue`;
+    const normalizedCapacity = Number.isFinite(Number(Capacity)) ? Number(Capacity) : 1000;
+
     const result = await db.run(
-      'INSERT INTO Venues (Name, City, Country, Capacity) VALUES (?, ?, ?, ?)',
-      [Name, City, Country || 'Unknown', Capacity || 1000]
+      'INSERT INTO Venues (Name, Address, City, Capacity) VALUES (?, ?, ?, ?)',
+      [Name, normalizedAddress, City, normalizedCapacity]
     );
     
-    res.status(201).json({ VenueId: result.lastID, Name, City, Country: Country || 'Unknown', Capacity: Capacity || 1000 });
+    res.status(201).json({ VenueId: result.lastID, Name, Address: normalizedAddress, City, Capacity: normalizedCapacity });
   } catch (error) {
     console.error('Error creating venue:', error);
     res.status(500).json({ message: 'Error creating venue',error: error.message });
@@ -288,6 +292,12 @@ router.delete('/:id', async (req, res) => {
   try {
     const db = await getDbPool();
     const { id } = req.params;
+
+    // Delete related records first (cascade delete)
+    // Delete ratings first
+    await db.run('DELETE FROM Ratings WHERE EventId = ?', [id]);
+    
+    // Delete the event
     const result = await db.run('DELETE FROM Events WHERE EventId = ?', [id]);
 
     if (result.changes === 0) {

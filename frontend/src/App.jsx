@@ -5,6 +5,7 @@ import {
   HomePage,
   EventsListingPage,
   EventDetailPage,
+  PartnersPage,
   SeatSelectionPage,
   CheckoutPage
   ,
@@ -26,7 +27,8 @@ import {
   SectorsPage,
   TicketsPage,
   OrganizersPage,
-  ReportsPage
+  ReportsPage,
+  AdminPartnersPage
 } from './admin/pages';
 import { PrivateAdminRoute } from './admin/utils/PrivateAdminRoute';
 import { useAdminStore } from './admin/stores';
@@ -73,6 +75,7 @@ export const App = () => {
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/events" element={<EventsListingPage />} />
+                <Route path="/partners" element={<PartnersPage />} />
                 <Route path="/events/:id" element={<EventDetailPage />} />
                 <Route path="/seat-selection/:eventId" element={<SeatSelectionPage />} />
                 <Route path="/checkout" element={<CheckoutPage />} />
@@ -114,6 +117,9 @@ export const App = () => {
                           
                           {/* Reviews */}
                           <Route path="/reviews" element={<ReviewsPage />} />
+                          
+                          {/* Partners */}
+                          <Route path="/partners" element={<AdminPartnersPage />} />
                           
                           {/* Reports */}
                           <Route path="/reports" element={<ReportsPage />} />

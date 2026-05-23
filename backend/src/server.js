@@ -15,6 +15,8 @@ import purchasesRoutes from './routes-purchases.js';
 import mysqlRoutes from './routes-mysql.js';
 import cartRoutes from './routes-cart.js';
 import Stripe from 'stripe';
+import path from 'path';
+import uploadsRoutes from './routes-uploads.js';
 
 const stripe = stripeConfig.secretKey ? new Stripe(stripeConfig.secretKey) : null;
 if (!stripe) {
@@ -99,6 +101,13 @@ app.use('/api/dashboard', dashboardRoutes);
 
 // Events Management (Venues, Sectors, Events)
 app.use('/api/events', eventsRoutes);
+
+// Serve uploaded files
+const uploadsPath = path.join(process.cwd(), 'uploads');
+app.use('/uploads', express.static(uploadsPath));
+
+// Uploads endpoint
+app.use('/api/uploads', uploadsRoutes);
 
 // Sales Management (Clients, Tickets, Orders, OrderDetails)
 app.use('/api/sales', salesRoutes);

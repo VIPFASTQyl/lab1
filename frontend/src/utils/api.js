@@ -42,6 +42,26 @@ export const eventApi = {
   update: (id, data) => api.put(`/events/${id}`, data),
   delete: (id) => api.delete(`/events/${id}`),
   getVenues: () => api.get('/events/venues'),
+  createVenue: (data) => api.post('/events/venues', data),
+  updateVenue: (id, data) => api.put(`/events/venues/${id}`, data),
+  deleteVenue: (id) => api.delete(`/events/venues/${id}`),
+};
+
+export const uploadApi = {
+  uploadImage: (formData) => api.post('/uploads', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+};
+
+export const ratingsApi = {
+  getByEvent: (eventId) => api.get('/extras/ratings', { params: { eventId } }),
+  create: (data) => api.post('/extras/ratings', data),
+};
+
+export const partnersApi = {
+  getAll: () => api.get('/partners'),
+  getById: (id) => api.get(`/partners/${id}`),
+  create: (data) => api.post('/partners', data),
+  update: (id, data) => api.put(`/partners/${id}`, data),
+  delete: (id) => api.delete(`/partners/${id}`),
 };
 
 export const ticketApi = {
