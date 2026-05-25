@@ -1,11 +1,12 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Calendar, MapPin, Heart } from 'lucide-react';
 import { Badge } from '../ui';
 import { DEFAULT_EVENT_IMAGE } from '../../constants';
 
 export const EventCard = ({ event, variant = 'grid', onClick }) => {
   const [isFavorite, setIsFavorite] = React.useState(false);
+  const navigate = useNavigate();
 
   if (variant === 'list') {
     return (
@@ -115,7 +116,15 @@ export const EventCard = ({ event, variant = 'grid', onClick }) => {
           <span className="text-lg font-bold text-primary-600 dark:text-primary-400">
             From ${event.priceFrom}
           </span>
-          <button className="px-3 py-1 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              navigate(`/events/${event.id}#quick-buy`);
+            }}
+            className="px-3 py-1 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors"
+          >
             Buy
           </button>
         </div>

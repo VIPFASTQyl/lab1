@@ -45,6 +45,11 @@ export const eventApi = {
   createVenue: (data) => api.post('/events/venues', data),
   updateVenue: (id, data) => api.put(`/events/venues/${id}`, data),
   deleteVenue: (id) => api.delete(`/events/venues/${id}`),
+  getSectors: (venueId) => venueId ? api.get('/events/sectors', { params: { venueId } }) : api.get('/events/sectors'),
+  getSectorById: (id) => api.get(`/events/sectors/${id}`),
+  createSector: (data) => api.post('/events/sectors', data),
+  updateSector: (id, data) => api.put(`/events/sectors/${id}`, data),
+  deleteSector: (id) => api.delete(`/events/sectors/${id}`),
 };
 
 export const uploadApi = {

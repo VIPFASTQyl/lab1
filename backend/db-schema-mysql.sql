@@ -71,8 +71,8 @@ CREATE TABLE IF NOT EXISTS Tickets (
   Status VARCHAR(50) NOT NULL DEFAULT 'Available',
   TicketType VARCHAR(50) NOT NULL DEFAULT 'General',
   CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (EventId) REFERENCES Events(EventId),
-  FOREIGN KEY (SectorId) REFERENCES Sectors(SectorId),
+  FOREIGN KEY (EventId) REFERENCES Events(EventId) ON DELETE CASCADE,
+  FOREIGN KEY (SectorId) REFERENCES Sectors(SectorId) ON DELETE CASCADE,
   INDEX idx_Tickets_EventId (EventId),
   INDEX idx_Tickets_SectorId (SectorId),
   INDEX idx_Tickets_Status (Status)

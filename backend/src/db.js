@@ -103,9 +103,13 @@ async function createTablesIfNotExist() {
       `CREATE TABLE IF NOT EXISTS Sectors (
         SectorId INT AUTO_INCREMENT PRIMARY KEY,
         VenueId INT NOT NULL,
-        Name VARCHAR(255) NOT NULL,
-        Capacity INT,
-        FOREIGN KEY (VenueId) REFERENCES Venues(VenueId) ON DELETE CASCADE
+        SectorName VARCHAR(100) NOT NULL,
+        Capacity INT NOT NULL,
+        BasePrice DECIMAL(10,2) NOT NULL,
+        Description LONGTEXT,
+        CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (VenueId) REFERENCES Venues(VenueId) ON DELETE CASCADE,
+        INDEX idx_Sectors_VenueId (VenueId)
       )`,
       
       `CREATE TABLE IF NOT EXISTS Events (

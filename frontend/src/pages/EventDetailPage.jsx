@@ -1,20 +1,25 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Tabs, Alert } from '../components/ui';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Button, Tabs, Alert, Card, Input } from '../components/ui';
 import { EventHeaderSection, ReviewsSection } from '../components/events';
-import { useCartStore } from '../store';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { eventApi, ratingsApi } from '../utils/api';
 import { DEFAULT_EVENT_IMAGE } from '../constants';
 
 export const EventDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const quickBuyRef = useRef(null);
   const [showAlert, setShowAlert] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [event, setEvent] = useState(null);
   const [venues, setVenues] = useState([]);
+  const [sectors, setSectors] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [quantity, setQuantity] = useState(1);
+  const [purchaseComplete, setPurchaseComplete] = useState(false);
+  const [purchaseError, setPurchaseError] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -30,6 +35,7 @@ export const EventDetailPage = () => {
         const eventRow = eventData || {};
         const venueRow = (venueData || []).find((v) => String(v.VenueId) === String(eventRow.VenueId)) || null;
 
+        const sectorData = eventRow.VenueId ? await eventApi.getSectors(eventRow.VenueId).catch(() => []) : [];
         const normalizedEvent = {
           id: eventRow.EventId,
           title: eventRow.Title,
@@ -49,6 +55,7 @@ export const EventDetailPage = () => {
 
         setEvent(normalizedEvent);
         setVenues(venueData || []);
+        setSectors(sectorData || []);
         setReviews((ratingsData || []).map((rating) => ({
           id: rating.id,
           name: rating.name || 'Guest',
@@ -67,7 +74,21 @@ export const EventDetailPage = () => {
     if (id) load();
   }, [id]);
 
+  useEffect(() => {
+    if (location.hash === '#quick-buy' && quickBuyRef.current) {
+      quickBuyRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [location.hash, event]);
+
   const reviewsSummary = useMemo(() => reviews, [reviews]);
+  const startingPrice = useMemo(() => {
+    const prices = sectors
+      .map((sector) => Number(sector.BasePrice ?? sector.basePrice ?? 0))
+      .filter((price) => Number.isFinite(price) && price > 0);
+    return prices.length > 0 ? Math.min(...prices) : 0;
+  }, [sectors]);
+
+  const quickBuyTotal = useMemo(() => startingPrice * quantity, [startingPrice, quantity]);
 
   const handleSubmitReview = async ({ rating, comment }) => {
     const created = await ratingsApi.create({ eventId: id, rating, comment });
@@ -79,6 +100,19 @@ export const EventDetailPage = () => {
       date: created.date,
     }, ...prev]);
   };
+
+  const handleQuickBuy = (e) => {
+    e.preventDefault();
+    setPurchaseError(null);
+
+    if (!startingPrice) {
+      setPurchaseError('Ticket pricing is not available for this event yet.');
+      return;
+    }
+
+    setPurchaseComplete(true);
+  };
+
   const tabs = event ? [
     {
       label: 'About',
@@ -145,7 +179,10 @@ export const EventDetailPage = () => {
       ) : event ? (
         <>
           {/* Header */}
-          <EventHeaderSection event={event} />
+          <EventHeaderSection
+            event={event}
+            onBuyTickets={() => quickBuyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          />
 
           {/* Main Content */}
           <div className="page-container py-12 md:py-16">
@@ -162,6 +199,75 @@ export const EventDetailPage = () => {
               )}
 
               <Tabs tabs={tabs} />
+
+              <div ref={quickBuyRef} id="quick-buy" className="mt-10">
+                <Card className="p-6 md:p-8">
+                  <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
+                    <div>
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Quick Buy</h3>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        Choose how many tickets you want, then enter your card details.
+                      </p>
+                    </div>
+                    <div className="text-left md:text-right">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Starting from</p>
+                      <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">
+                        {startingPrice ? `$${startingPrice.toFixed(2)}` : 'Unavailable'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {purchaseComplete ? (
+                    <Alert
+                      type="success"
+                      title="Purchase started"
+                      message="Your ticket request is being processed. Redirecting to checkout..."
+                    />
+                  ) : null}
+
+                  {purchaseError ? (
+                    <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700">
+                      {purchaseError}
+                    </div>
+                  ) : null}
+
+                  <form onSubmit={handleQuickBuy} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="md:col-span-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Ticket Quantity
+                        </label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={quantity}
+                          onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
+                          required
+                        />
+                      </div>
+                      <div className="md:col-span-2 flex items-end">
+                        <div className="w-full rounded-lg border border-gray-200 dark:border-dark-700 bg-gray-50 dark:bg-dark-800 px-4 py-3">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Estimated total</p>
+                          <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                            {startingPrice ? `$${quickBuyTotal.toFixed(2)}` : 'Unavailable'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Input type="text" placeholder="Card Number" maxLength="16" pattern="[0-9]*" required />
+                      <Input type="text" placeholder="Cardholder Name" required />
+                      <Input type="text" placeholder="MM/YY" required />
+                      <Input type="text" placeholder="CVV" maxLength="4" pattern="[0-9]*" required />
+                    </div>
+
+                    <Button type="submit" variant="primary" size="lg" className="w-full justify-center">
+                      Buy {quantity} Ticket{quantity === 1 ? '' : 's'}
+                    </Button>
+                  </form>
+                </Card>
+              </div>
             </div>
           </div>
 

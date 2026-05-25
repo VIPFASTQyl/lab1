@@ -115,15 +115,15 @@ router.get('/sectors', async (req, res) => {
     const db = await getDbPool();
     const { venueId } = req.query;
     
-    let query = 'SELECT * FROM Sectors';
+    let query = 'SELECT s.SectorId, s.VenueId, s.SectorName, s.Capacity, s.BasePrice, s.Description, s.CreatedAt, v.Name as VenueName FROM Sectors s LEFT JOIN Venues v ON s.VenueId = v.VenueId';
     let params = [];
 
     if (venueId) {
-      query += ' WHERE VenueId = ?';
+      query += ' WHERE s.VenueId = ?';
       params.push(venueId);
     }
 
-    query += ' ORDER BY SectorId';
+    query += ' ORDER BY s.SectorId';
     const sectors = await db.all(query, params);
     res.json(sectors);
   } catch (error) {
@@ -137,7 +137,7 @@ router.get('/sectors/:id', async (req, res) => {
   try {
     const db = await getDbPool();
     const { id } = req.params;
-    const results = await db.all('SELECT * FROM Sectors WHERE SectorId = ?', [id]);
+    const results = await db.all('SELECT s.SectorId, s.VenueId, s.SectorName, s.Capacity, s.BasePrice, s.Description, s.CreatedAt, v.Name as VenueName FROM Sectors s LEFT JOIN Venues v ON s.VenueId = v.VenueId WHERE s.SectorId = ?', [id]);
     
     if (!results || results.length === 0) {
       return res.status(404).json({ message: 'Sector not found' });
@@ -196,16 +196,26 @@ router.put('/sectors/:id', async (req, res) => {
 // DELETE sector
 router.delete('/sectors/:id', async (req, res) => {
   try {
-    const db = await getDbPool();
     const { id } = req.params;
+    
+    const db = await getDbPool();
     const result = await db.run('DELETE FROM Sectors WHERE SectorId = ?', [id]);
 
     if (result.changes === 0) {
       return res.status(404).json({ message: 'Sector not found' });
     }
-    res.status(204).send();
+    
+    res.json({ message: 'Sector deleted successfully' });
   } catch (error) {
     console.error('Error deleting sector:', error);
+    
+    // Handle foreign key constraint error
+    if (error.code === 'ER_ROW_IS_REFERENCED_2' || error.message?.includes('foreign key')) {
+      return res.status(409).json({ 
+        message: 'Cannot delete sector with existing tickets. Please delete all tickets in this sector first.' 
+      });
+    }
+    
     res.status(500).json({ message: 'Error deleting sector', error: error.message });
   }
 });
