@@ -4,9 +4,9 @@ import { authMiddleware } from './middleware-auth.js';
 
 const router = express.Router();
 
-// Keep read access for ratings public, but protect all write operations.
+// Keep read access for discounts and ratings public, but protect all write operations.
 router.use((req, res, next) => {
-  if (req.method === 'GET' && req.path.startsWith('/ratings')) {
+  if (req.method === 'GET' && (req.path.startsWith('/discounts') || req.path.startsWith('/ratings'))) {
     return next();
   }
   return authMiddleware(req, res, next);
@@ -193,6 +193,7 @@ router.delete('/organizers/:id', async (req, res) => {
     if (!existing || existing.length === 0) {
       return res.status(404).json({ message: 'Organizer not found' });
     }
+    await db.run('DELETE FROM EventOrganizers WHERE OrganizerId = ?', [req.params.id]);
     await db.run('DELETE FROM Organizers WHERE OrganizerId = ?', [req.params.id]);
     return res.status(204).send();
   } catch (err) {

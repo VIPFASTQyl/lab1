@@ -121,6 +121,8 @@ async function createTablesIfNotExist() {
         StartTime TIME,
         EndTime TIME,
         VenueId INT NOT NULL,
+        Price DECIMAL(10,2) NULL,
+        DiscountId INT NULL,
         Status VARCHAR(50) NOT NULL DEFAULT 'Upcoming',
         ImageUrl TEXT,
         CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -279,6 +281,41 @@ async function createTablesIfNotExist() {
         if (!String(alterLookupError.message || '').includes('Duplicate column name')) {
           console.error('OrderDetails migration warning:', alterLookupError.message);
         }
+      }
+    }
+
+    try {
+      const [priceColumnRows] = await conn.execute(
+        `SELECT COUNT(*) AS columnCount
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'Events' AND COLUMN_NAME = 'Price'`,
+        [dbConfig.database]
+      );
+
+      if (!priceColumnRows[0]?.columnCount) {
+        await conn.execute('ALTER TABLE Events ADD COLUMN Price DECIMAL(10,2) NULL AFTER VenueId');
+      }
+
+    } catch (priceColumnError) {
+      if (!String(priceColumnError.message || '').includes('Duplicate column name')) {
+        console.error('Events Price migration warning:', priceColumnError.message);
+      }
+    }
+
+    try {
+      const [discountColumnRows] = await conn.execute(
+        `SELECT COUNT(*) AS columnCount
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'Events' AND COLUMN_NAME = 'DiscountId'`,
+        [dbConfig.database]
+      );
+
+      if (!discountColumnRows[0]?.columnCount) {
+        await conn.execute('ALTER TABLE Events ADD COLUMN DiscountId INT NULL AFTER VenueId');
+      }
+    } catch (discountColumnError) {
+      if (!String(discountColumnError.message || '').includes('Duplicate column name')) {
+        console.error('Events DiscountId migration warning:', discountColumnError.message);
       }
     }
 

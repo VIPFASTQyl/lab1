@@ -35,6 +35,7 @@ CREATE TABLE Events (
   StartTime TIME,
   EndTime TIME,
   VenueId INT NOT NULL,
+  Price DECIMAL(10,2),
   Status NVARCHAR(50) NOT NULL DEFAULT 'Upcoming', -- Upcoming, Ongoing, Completed, Cancelled
   CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
   UpdatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),

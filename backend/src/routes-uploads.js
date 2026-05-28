@@ -1,4 +1,5 @@
 import express from 'express';
+import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
 import { authMiddleware } from './middleware-auth.js';
@@ -9,6 +10,9 @@ const router = express.Router();
 router.use(authMiddleware);
 
 const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -24,15 +28,22 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // POST /api/uploads - single image upload
-router.post('/', upload.single('file'), (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
-    const url = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-    res.status(201).json({ url });
-  } catch (err) {
-    console.error('Upload error:', err);
-    res.status(500).json({ message: 'Upload failed', error: err.message });
-  }
+router.post('/', (req, res, next) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      console.error('Upload error:', err);
+      return res.status(500).json({ message: 'Upload failed', error: err.message });
+    }
+
+    try {
+      if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+      const url = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+      return res.status(201).json({ url });
+    } catch (error) {
+      console.error('Upload error:', error);
+      return res.status(500).json({ message: 'Upload failed', error: error.message });
+    }
+  });
 });
 
 export default router;

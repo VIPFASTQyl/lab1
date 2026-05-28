@@ -20,7 +20,7 @@ const TABLES = {
   events: {
     tableName: 'Events',
     idColumn: 'EventId',
-    columns: ['Title', 'Description', 'Category', 'EventDate', 'StartTime', 'EndTime', 'VenueId', 'Status', 'CreatedAt', 'UpdatedAt'],
+    columns: ['Title', 'Description', 'Category', 'EventDate', 'StartTime', 'EndTime', 'VenueId', 'Price', 'DiscountId', 'Status', 'CreatedAt', 'UpdatedAt'],
     requiredOnCreate: ['Title', 'Category', 'EventDate', 'VenueId']
   },
   sectors: {
@@ -579,6 +579,9 @@ router.delete('/:resource/:id', authMiddleware, async (req, res) => {
 
   try {
     const pool = getMySqlPool();
+    if (req.params.resource === 'organizers') {
+      await pool.query('DELETE FROM EventOrganizers WHERE OrganizerId = ?', [req.params.id]);
+    }
     const [result] = await pool.query(
       `DELETE FROM ${definition.tableName} WHERE ${definition.idColumn} = ?`,
       [req.params.id]

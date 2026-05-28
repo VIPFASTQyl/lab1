@@ -61,12 +61,34 @@ export const ratingsApi = {
   create: (data) => api.post('/extras/ratings', data),
 };
 
+export const discountsApi = {
+  getAll: () => api.get('/extras/discounts'),
+  getById: (id) => api.get(`/extras/discounts/${id}`),
+  create: (data) => api.post('/extras/discounts', data),
+  update: (id, data) => api.put(`/extras/discounts/${id}`, data),
+  delete: (id) => api.delete(`/extras/discounts/${id}`),
+};
+
 export const partnersApi = {
   getAll: () => api.get('/partners'),
   getById: (id) => api.get(`/partners/${id}`),
   create: (data) => api.post('/partners', data),
   update: (id, data) => api.put(`/partners/${id}`, data),
   delete: (id) => api.delete(`/partners/${id}`),
+};
+
+export const organizersApi = {
+  getAll: () => api.get('/mysql/organizers'),
+  getById: (id) => api.get(`/mysql/organizers/${id}`),
+  create: (data) => api.post('/mysql/organizers', data),
+  update: (id, data) => api.put(`/mysql/organizers/${id}`, data),
+  delete: (id) => api.delete(`/mysql/organizers/${id}`),
+};
+
+export const relationsApi = {
+  getEventOrganizers: (params) => api.get('/relations/event-organizers', { params }),
+  createEventOrganizer: (data) => api.post('/relations/event-organizers', data),
+  deleteEventOrganizer: (id) => api.delete(`/relations/event-organizers/${id}`),
 };
 
 export const ticketApi = {

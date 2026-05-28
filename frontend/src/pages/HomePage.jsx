@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Button, Input, Badge } from '../components/ui';
 import { Carousel, EventCard } from '../components/common';
 import { eventApi } from '../utils/api';
 import { DEFAULT_EVENT_IMAGE } from '../constants';
 
 export const HomePage = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-
   const [events, setEvents] = useState([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [eventsError, setEventsError] = useState(null);
@@ -51,12 +49,6 @@ export const HomePage = () => {
     load();
   }, []);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    // Navigate to events page with search query
-    window.location.href = `/events?search=${searchQuery}`;
-  };
-
   return (
     <div className="min-h-screen bg-white dark:bg-dark-900">
       {/* Hero Section */}
@@ -75,28 +67,6 @@ export const HomePage = () => {
               Find and purchase tickets to concerts, sports, theater, and more
             </p>
           </div>
-
-          {/* Search Bar */}
-          <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
-            <div className="flex gap-2 md:gap-3 flex-col sm:flex-row">
-              <Input
-                type="text"
-                placeholder="Search events by name, city, or category..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                icon={Search}
-                className="flex-1 md:text-lg"
-              />
-              <Button
-                type="submit"
-                variant="secondary"
-                size="md"
-                className="w-full sm:w-auto px-8"
-              >
-                Search
-              </Button>
-            </div>
-          </form>
         </div>
       </section>
 

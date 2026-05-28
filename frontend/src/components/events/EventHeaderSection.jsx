@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, MapPin, Clock, Tag, Share2 } from 'lucide-react';
+import { Calendar, MapPin, Clock, Tag } from 'lucide-react';
 import { Button, Badge } from '../ui';
 import { DEFAULT_EVENT_IMAGE } from '../../constants';
 
@@ -31,9 +31,6 @@ export const EventHeaderSection = ({ event, onBuyTickets }) => {
                 )}
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button variant="secondary" size="lg">
-                  Share Event
-                </Button>
                 <Button variant="primary" size="lg" onClick={onBuyTickets}>
                   Buy Tickets
                 </Button>

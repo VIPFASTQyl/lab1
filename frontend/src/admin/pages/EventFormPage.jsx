@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ChevronLeft, Save } from 'lucide-react';
-import { eventApi, uploadApi } from '../../utils/api';
+import { discountsApi, eventApi, organizersApi, relationsApi, uploadApi } from '../../utils/api';
 import { DEFAULT_EVENT_IMAGE } from '../../constants';
 
 export const EventFormPage = () => {
@@ -19,6 +19,7 @@ export const EventFormPage = () => {
           // normalize ImageUrl key to ImageUrl if backend uses ImageUrl
           ImageUrl: event.ImageUrl || event.image || event.ImageURL || '',
           Price: event.Price || event.priceFrom || '',
+          DiscountId: event.DiscountId || event.discountId || '',
         }
       : {
           Title: '',
@@ -30,6 +31,7 @@ export const EventFormPage = () => {
           VenueId: '',
           ImageUrl: '',
           Price: '',
+          DiscountId: '',
         }
     )
   );
@@ -37,10 +39,21 @@ export const EventFormPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [venues, setVenues] = useState([]);
+  const [discounts, setDiscounts] = useState([]);
+  const [organizers, setOrganizers] = useState([]);
+  const [selectedOrganizerId, setSelectedOrganizerId] = useState('');
+  const [existingOrganizerRelationId, setExistingOrganizerRelationId] = useState('');
+  const [initialOrganizerId, setInitialOrganizerId] = useState('');
+  const [selectedDiscountId, setSelectedDiscountId] = useState(String(event?.DiscountId || event?.discountId || ''));
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetchVenues();
+    fetchDiscounts();
+    fetchOrganizers();
+    if (isEdit && id) {
+      fetchEventOrganizers();
+    }
   }, []);
 
   const fetchVenues = async () => {
@@ -49,6 +62,38 @@ export const EventFormPage = () => {
       setVenues(response || []);
     } catch (err) {
       console.error('Failed to fetch venues:', err);
+    }
+  };
+
+  const fetchOrganizers = async () => {
+    try {
+      const response = await organizersApi.getAll();
+      setOrganizers(response || []);
+    } catch (err) {
+      console.error('Failed to fetch organizers:', err);
+    }
+  };
+
+  const fetchDiscounts = async () => {
+    try {
+      const response = await discountsApi.getAll();
+      setDiscounts(response || []);
+    } catch (err) {
+      console.error('Failed to fetch discounts:', err);
+    }
+  };
+
+  const fetchEventOrganizers = async () => {
+    try {
+      const response = await relationsApi.getEventOrganizers({ eventId: id });
+      const relation = Array.isArray(response) ? response[0] : null;
+      const organizerId = relation?.OrganizerId ? String(relation.OrganizerId) : '';
+      const relationId = relation?.EventOrganizerId ? String(relation.EventOrganizerId) : '';
+      setSelectedOrganizerId(organizerId);
+      setInitialOrganizerId(organizerId);
+      setExistingOrganizerRelationId(relationId);
+    } catch (err) {
+      console.error('Failed to fetch event organizers:', err);
     }
   };
 
@@ -81,6 +126,40 @@ export const EventFormPage = () => {
     }
   };
 
+  const syncOrganizerRelation = async (eventIdValue) => {
+    const organizerIdValue = selectedOrganizerId ? Number(selectedOrganizerId) : null;
+    const originalOrganizerIdValue = initialOrganizerId ? Number(initialOrganizerId) : null;
+
+    if (!organizerIdValue) {
+      if (isEdit && existingOrganizerRelationId) {
+        await relationsApi.deleteEventOrganizer(existingOrganizerRelationId);
+        setExistingOrganizerRelationId('');
+        setInitialOrganizerId('');
+      }
+      return;
+    }
+
+    if (!isEdit) {
+      await relationsApi.createEventOrganizer({ eventId: Number(eventIdValue), organizerId: organizerIdValue });
+      return;
+    }
+
+    if (existingOrganizerRelationId) {
+      if (originalOrganizerIdValue === organizerIdValue) {
+        return;
+      }
+
+      await relationsApi.deleteEventOrganizer(existingOrganizerRelationId);
+      setExistingOrganizerRelationId('');
+    }
+
+    const createdRelation = await relationsApi.createEventOrganizer({ eventId: Number(eventIdValue), organizerId: organizerIdValue });
+    if (createdRelation?.EventOrganizerId) {
+      setExistingOrganizerRelationId(String(createdRelation.EventOrganizerId));
+      setInitialOrganizerId(String(organizerIdValue));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -93,10 +172,25 @@ export const EventFormPage = () => {
         return;
       }
 
+      const eventPayload = {
+        ...formData,
+        DiscountId: selectedDiscountId ? Number(selectedDiscountId) : null,
+      };
+
       if (isEdit) {
-        await eventApi.update(id, formData);
+        await eventApi.update(id, eventPayload);
       } else {
-        await eventApi.create(formData);
+        const createdEvent = await eventApi.create(eventPayload);
+        const createdEventId = createdEvent?.EventId || createdEvent?.eventId || createdEvent?.id;
+        if (selectedOrganizerId && createdEventId) {
+          await syncOrganizerRelation(createdEventId);
+        }
+        navigate('/admin/events');
+        return;
+      }
+
+      if (selectedOrganizerId || (isEdit && existingOrganizerRelationId)) {
+        await syncOrganizerRelation(id);
       }
       
       navigate('/admin/events');
@@ -153,7 +247,7 @@ export const EventFormPage = () => {
           </div>
 
           {/* Category & Venue */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Category
@@ -175,6 +269,24 @@ export const EventFormPage = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Discount
+              </label>
+              <select
+                value={selectedDiscountId}
+                onChange={(e) => setSelectedDiscountId(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">No Discount</option>
+                {discounts.map((discount) => (
+                  <option key={discount.DiscountId} value={discount.DiscountId}>
+                    {discount.Code} - {discount.Percentage}%
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Venue *
               </label>
               <select
@@ -188,6 +300,25 @@ export const EventFormPage = () => {
                 {venues.map(venue => (
                   <option key={venue.VenueId} value={venue.VenueId}>
                     {venue.Name} - {venue.City}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Organizer
+              </label>
+              <select
+                name="OrganizerId"
+                value={selectedOrganizerId}
+                onChange={(e) => setSelectedOrganizerId(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select Organizer</option>
+                {organizers.map((organizer) => (
+                  <option key={organizer.OrganizerId} value={organizer.OrganizerId}>
+                    {organizer.Name}{organizer.OrganizerType ? ` - ${organizer.OrganizerType}` : ''}
                   </option>
                 ))}
               </select>
@@ -268,6 +399,18 @@ export const EventFormPage = () => {
               step="0.01"
               className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+          </div>
+
+          <div className="rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/40 p-4">
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Discount</p>
+            <p className="text-gray-900 dark:text-white">
+              {selectedDiscountId
+                ? (() => {
+                    const selectedDiscount = discounts.find((discount) => String(discount.DiscountId) === String(selectedDiscountId));
+                    return selectedDiscount ? `${selectedDiscount.Code} - ${Number(selectedDiscount.Percentage || 0)}%` : 'Selected discount';
+                  })()
+                : 'No discount selected'}
+            </p>
           </div>
 
           {/* Upload Image File */}

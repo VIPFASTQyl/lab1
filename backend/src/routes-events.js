@@ -257,18 +257,20 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const db = await getDbPool();
-    const { Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status, ImageUrl } = req.body;
+    const { Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Price, DiscountId, Status, ImageUrl } = req.body;
     
     if (!Title || !EventDate || !VenueId) {
       return res.status(400).json({ message: 'Title, EventDate, and VenueId are required' });
     }
 
+    const normalizedPrice = Price === '' || Price === null || Price === undefined ? null : Number(Price);
+
     const result = await db.run(
-      'INSERT INTO Events (Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status, ImageUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [Title, Description || null, Category || null, EventDate, StartTime || null, EndTime || null, VenueId, Status || 'Upcoming', ImageUrl || null]
+      'INSERT INTO Events (Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Price, DiscountId, Status, ImageUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [Title, Description || null, Category || null, EventDate, StartTime || null, EndTime || null, VenueId, normalizedPrice, DiscountId || null, Status || 'Upcoming', ImageUrl || null]
     );
     
-    res.status(201).json({ EventId: result.lastID, Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status, ImageUrl });
+    res.status(201).json({ EventId: result.lastID, Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Price: normalizedPrice, DiscountId, Status, ImageUrl });
   } catch (error) {
     console.error('Error creating event:', error);
     res.status(500).json({ message: 'Error creating event', error: error.message });
@@ -280,11 +282,12 @@ router.put('/:id', async (req, res) => {
   try {
     const db = await getDbPool();
     const { id } = req.params;
-    const { Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Status, ImageUrl } = req.body;
+    const { Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Price, DiscountId, Status, ImageUrl } = req.body;
+    const normalizedPrice = Price === '' || Price === null || Price === undefined ? null : Number(Price);
 
     const result = await db.run(
-      'UPDATE Events SET Title = ?, Description = ?, Category = ?, EventDate = ?, StartTime = ?, EndTime = ?, VenueId = ?, Status = ?, ImageUrl = ? WHERE EventId = ?',
-      [Title, Description, Category || null, EventDate, StartTime || null, EndTime || null, VenueId, Status || 'Upcoming', ImageUrl || null, id]
+      'UPDATE Events SET Title = ?, Description = ?, Category = ?, EventDate = ?, StartTime = ?, EndTime = ?, VenueId = ?, Price = ?, DiscountId = ?, Status = ?, ImageUrl = ? WHERE EventId = ?',
+      [Title, Description, Category || null, EventDate, StartTime || null, EndTime || null, VenueId, normalizedPrice, DiscountId || null, Status || 'Upcoming', ImageUrl || null, id]
     );
 
     if (result.changes === 0) {
@@ -304,7 +307,18 @@ router.delete('/:id', async (req, res) => {
     const { id } = req.params;
 
     // Delete related records first (cascade delete)
-    // Delete ratings first
+    // Remove order details tied to tickets for this event
+    await db.run(
+      `DELETE od FROM OrderDetails od
+       INNER JOIN Tickets t ON od.TicketId = t.TicketId
+       WHERE t.EventId = ?`,
+      [id]
+    );
+    // Delete tickets for this event
+    await db.run('DELETE FROM Tickets WHERE EventId = ?', [id]);
+    // Delete event organizers first
+    await db.run('DELETE FROM EventOrganizers WHERE EventId = ?', [id]);
+    // Delete ratings
     await db.run('DELETE FROM Ratings WHERE EventId = ?', [id]);
     
     // Delete the event
