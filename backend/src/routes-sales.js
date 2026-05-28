@@ -224,6 +224,102 @@ router.get('/orders', async (req, res) => {
   }
 });
 
+// GET /api/sales/orders/admin
+router.get('/orders/admin', async (req, res) => {
+  try {
+    if (!req.user?.isAdmin) {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    const db = await getDbPool();
+    const rows = await db.all(
+      `SELECT
+         o.OrderId,
+         o.OrderDate,
+         o.TotalAmount,
+         o.Status AS OrderStatus,
+         c.ClientId,
+         c.FirstName,
+         c.LastName,
+         c.Email,
+         c.Address,
+         od.DetailId AS OrderDetailId,
+         od.EventId,
+         od.EventTitle AS StoredEventTitle,
+         od.TicketType,
+         od.BuyerName,
+         od.BuyerEmail,
+         od.Quantity,
+         od.UnitPrice,
+         od.TotalPrice,
+         e.Title AS EventTitle,
+         e.Category AS EventCategory,
+         e.EventDate,
+         p.PaymentId,
+         p.Amount AS PaymentAmount,
+         p.PaymentDate,
+         p.Status AS PaymentStatus
+       FROM Orders o
+       LEFT JOIN Clients c ON c.ClientId = o.ClientId
+       LEFT JOIN OrderDetails od ON od.OrderId = o.OrderId
+       LEFT JOIN Events e ON e.EventId = od.EventId
+       LEFT JOIN Payments p ON p.OrderId = o.OrderId
+       ORDER BY o.OrderDate DESC, od.DetailId ASC, p.PaymentId DESC`
+    );
+
+    const grouped = {};
+
+    for (const row of rows) {
+      if (!grouped[row.OrderId]) {
+        grouped[row.OrderId] = {
+          orderId: row.OrderId,
+          orderDate: row.OrderDate,
+          totalAmount: Number(row.TotalAmount || 0),
+          orderStatus: row.OrderStatus,
+          buyer: {
+            clientId: row.ClientId,
+            firstName: row.FirstName || '',
+            lastName: row.LastName || '',
+            fullName: `${row.FirstName || ''} ${row.LastName || ''}`.trim(),
+            email: row.Email || '',
+            address: row.Address || ''
+          },
+          payment: row.PaymentId
+            ? {
+                paymentId: row.PaymentId,
+                amount: Number(row.PaymentAmount || 0),
+                paymentDate: row.PaymentDate,
+                status: row.PaymentStatus
+              }
+            : null,
+          items: []
+        };
+      }
+
+      if (row.OrderDetailId) {
+        grouped[row.OrderId].items.push({
+          orderDetailId: row.OrderDetailId,
+          eventId: row.EventId,
+          eventTitle: row.StoredEventTitle || row.EventTitle || `Event ${row.EventId || ''}`,
+          eventCategory: row.EventCategory || '',
+          eventDate: row.EventDate,
+          ticketType: row.TicketType || '',
+          buyerName: row.BuyerName || `${row.FirstName || ''} ${row.LastName || ''}`.trim(),
+          buyerEmail: row.BuyerEmail || row.Email || '',
+          quantity: Number(row.Quantity || 0),
+          unitPrice: Number(row.UnitPrice || 0),
+          lineTotal: Number(row.TotalPrice || (Number(row.Quantity || 0) * Number(row.UnitPrice || 0)))
+        });
+      }
+    }
+
+    return res.json(Object.values(grouped));
+  } catch (err) {
+    console.error('Admin orders error', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 // GET /api/sales/orders/:id
 router.get('/orders/:id', async (req, res) => {
   try {
@@ -302,7 +398,7 @@ router.delete('/orders/:id', async (req, res) => {
 router.get('/order-details', async (req, res) => {
   try {
     const db = await getDbPool();
-    let query = `SELECT DetailId, OrderId, TicketId, Quantity, UnitPrice, TotalPrice FROM OrderDetails`;
+    let query = `SELECT DetailId, OrderId, EventId, EventTitle, TicketType, BuyerName, BuyerEmail, Quantity, UnitPrice, TotalPrice FROM OrderDetails`;
     if (req.query.orderId) {
       const results = await db.all(query + ' WHERE OrderId = ?', [req.query.orderId]);
       return res.json(results);
@@ -319,7 +415,7 @@ router.get('/order-details', async (req, res) => {
 router.get('/order-details/:id', async (req, res) => {
   try {
     const db = await getDbPool();
-    const results = await db.all('SELECT DetailId, OrderId, TicketId, Quantity, UnitPrice, TotalPrice FROM OrderDetails WHERE DetailId = ?', [req.params.id]);
+    const results = await db.all('SELECT DetailId, OrderId, EventId, EventTitle, TicketType, BuyerName, BuyerEmail, Quantity, UnitPrice, TotalPrice FROM OrderDetails WHERE DetailId = ?', [req.params.id]);
     if (!results || results.length === 0) {
       return res.status(404).json({ message: 'Order detail not found' });
     }
@@ -332,15 +428,18 @@ router.get('/order-details/:id', async (req, res) => {
 
 // POST /api/sales/order-details
 router.post('/order-details', async (req, res) => {
-  const { orderId, ticketId, quantity, unitPrice, totalPrice } = req.body;
-  if (!orderId || !ticketId || !quantity || unitPrice === undefined || totalPrice === undefined) {
-    return res.status(400).json({ message: 'OrderId, TicketId, Quantity, UnitPrice, and TotalPrice are required' });
+  const { orderId, eventId, eventTitle, ticketType, buyerName, buyerEmail, quantity, unitPrice, totalPrice } = req.body;
+  if (!orderId || !quantity || unitPrice === undefined || totalPrice === undefined) {
+    return res.status(400).json({ message: 'OrderId, Quantity, UnitPrice, and TotalPrice are required' });
   }
   try {
     const db = await getDbPool();
-    const result = await db.run(`INSERT INTO OrderDetails (OrderId, TicketId, Quantity, UnitPrice, TotalPrice)
-              VALUES (?, ?, ?, ?, ?)`, [orderId, ticketId, quantity, unitPrice, totalPrice]);
-    const inserted = await db.all('SELECT DetailId, OrderId, TicketId, Quantity, UnitPrice, TotalPrice FROM OrderDetails WHERE DetailId = ?', [result.lastID]);
+    const result = await db.run(
+      `INSERT INTO OrderDetails (OrderId, EventId, EventTitle, TicketType, BuyerName, BuyerEmail, Quantity, UnitPrice, TotalPrice)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [orderId, eventId || null, eventTitle || null, ticketType || null, buyerName || null, buyerEmail || null, quantity, unitPrice, totalPrice]
+    );
+    const inserted = await db.all('SELECT DetailId, OrderId, EventId, EventTitle, TicketType, BuyerName, BuyerEmail, Quantity, UnitPrice, TotalPrice FROM OrderDetails WHERE DetailId = ?', [result.lastID]);
     return res.status(201).json(inserted[0]);
   } catch (err) {
     console.error('Create order detail error', err);

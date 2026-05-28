@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Tabs, Alert, Card, Input } from '../components/ui';
 import { EventHeaderSection, ReviewsSection } from '../components/events';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { eventApi, ratingsApi } from '../utils/api';
+import { eventApi, ratingsApi, purchaseApi } from '../utils/api';
+import { onlyDigits, formatCardExpiry, formatCardholderName } from '../utils';
 import { DEFAULT_EVENT_IMAGE } from '../constants';
 
 export const EventDetailPage = () => {
@@ -20,6 +21,11 @@ export const EventDetailPage = () => {
   const [quantity, setQuantity] = useState(1);
   const [purchaseComplete, setPurchaseComplete] = useState(false);
   const [purchaseError, setPurchaseError] = useState(null);
+  const [purchasing, setPurchasing] = useState(false);
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvv, setCardCvv] = useState('');
+  const [cardholderName, setCardholderName] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -101,7 +107,7 @@ export const EventDetailPage = () => {
     }, ...prev]);
   };
 
-  const handleQuickBuy = (e) => {
+  const handleQuickBuy = async (e) => {
     e.preventDefault();
     setPurchaseError(null);
 
@@ -110,7 +116,23 @@ export const EventDetailPage = () => {
       return;
     }
 
-    setPurchaseComplete(true);
+    try {
+      setPurchasing(true);
+      await purchaseApi.create({
+        eventId: event.id,
+        eventTitle: event.title,
+        ticketType: 'General Access',
+        quantity,
+        unitPrice: Number(startingPrice.toFixed(2)),
+        totalAmount: Number((startingPrice * quantity).toFixed(2)),
+        paymentMethod: 'Card',
+      });
+      setPurchaseComplete(true);
+    } catch (err) {
+      setPurchaseError(err.response?.data?.message || 'Failed to complete purchase');
+    } finally {
+      setPurchasing(false);
+    }
   };
 
   const tabs = event ? [
@@ -256,14 +278,45 @@ export const EventDetailPage = () => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Input type="text" placeholder="Card Number" maxLength="16" pattern="[0-9]*" required />
-                      <Input type="text" placeholder="Cardholder Name" required />
-                      <Input type="text" placeholder="MM/YY" required />
-                      <Input type="text" placeholder="CVV" maxLength="4" pattern="[0-9]*" required />
+                      <Input
+                        type="text"
+                        placeholder="Card Number"
+                        maxLength="16"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={cardNumber}
+                        onChange={(e) => setCardNumber(onlyDigits(e.target.value, 16))}
+                        required
+                      />
+                      <Input
+                        type="text"
+                        placeholder="Cardholder Name"
+                        value={cardholderName}
+                        onChange={(e) => setCardholderName(formatCardholderName(e.target.value))}
+                        required
+                      />
+                      <Input
+                        type="text"
+                        placeholder="MM/YY"
+                        maxLength="5"
+                        value={cardExpiry}
+                        onChange={(e) => setCardExpiry(formatCardExpiry(e.target.value))}
+                        required
+                      />
+                      <Input
+                        type="text"
+                        placeholder="CVV"
+                        maxLength="3"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={cardCvv}
+                        onChange={(e) => setCardCvv(onlyDigits(e.target.value, 3))}
+                        required
+                      />
                     </div>
 
                     <Button type="submit" variant="primary" size="lg" className="w-full justify-center">
-                      Buy {quantity} Ticket{quantity === 1 ? '' : 's'}
+                      {purchasing ? 'Processing...' : `Buy ${quantity} Ticket${quantity === 1 ? '' : 's'}`}
                     </Button>
                   </form>
                 </Card>

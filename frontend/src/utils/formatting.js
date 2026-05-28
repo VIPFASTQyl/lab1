@@ -36,6 +36,23 @@ export const validatePhoneNumber = (phone) => {
   return re.test(phone);
 };
 
+export const onlyDigits = (value, maxLength) => {
+  const digits = String(value || '').replace(/\D/g, '');
+  return typeof maxLength === 'number' ? digits.slice(0, maxLength) : digits;
+};
+
+export const formatCardExpiry = (value) => {
+  const digits = onlyDigits(value, 4);
+  if (digits.length <= 2) {
+    return digits;
+  }
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}`;
+};
+
+export const formatCardholderName = (value) => {
+  return String(value || '').toUpperCase();
+};
+
 export const generateOrderNumber = () => {
   return `EVT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 };

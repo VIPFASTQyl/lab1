@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { TrendingUp, Calendar, DollarSign, Users } from 'lucide-react';
 import { MetricCard, DataTable, StatusBadge } from '../components/common';
+import { paymentApi, salesApi } from '../../utils/api';
 
 // Mock data
 const mockMetrics = [
@@ -10,13 +11,6 @@ const mockMetrics = [
   { title: 'Active Users', value: '3,520', icon: Users, color: 'orange', trend: { up: true, label: '+120 new users' } },
 ];
 
-const mockOrders = [
-  { id: 'ORD-001', customer: 'John Doe', event: 'Summer Music Festival', tickets: 2, total: '$90', status: 'completed', date: '2026-05-18' },
-  { id: 'ORD-002', customer: 'Jane Smith', event: 'Broadway Show', tickets: 4, total: '$260', status: 'completed', date: '2026-05-18' },
-  { id: 'ORD-003', customer: 'Mike Johnson', event: 'Tech Conference', tickets: 1, total: '$99', status: 'pending', date: '2026-05-18' },
-  { id: 'ORD-004', customer: 'Sarah Wilson', event: 'Jazz Night', tickets: 3, total: '$105', status: 'cancelled', date: '2026-05-17' },
-];
-
 const mockUpcomingEvents = [
   { id: 1, title: 'Summer Music Festival', date: '2026-06-15', status: 'active', ticketsSold: 5420, available: 7080 },
   { id: 2, title: 'Broadway Show Night', date: '2026-06-20', status: 'active', ticketsSold: 3200, available: 4800 },
@@ -24,6 +18,47 @@ const mockUpcomingEvents = [
 ];
 
 export const DashboardPage = () => {
+  const [recentOrders, setRecentOrders] = useState([]);
+
+  useEffect(() => {
+    const loadRecentOrders = async () => {
+      try {
+        let ordersData = [];
+
+        try {
+          ordersData = await salesApi.getAdminOrders();
+        } catch (adminErr) {
+          ordersData = await salesApi.getAllOrders();
+        }
+
+        const mapped = await Promise.all((ordersData || []).slice(0, 4).map(async (order) => {
+          const [details, client, payments] = await Promise.all([
+            salesApi.getOrderDetails(order.OrderId).catch(() => []),
+            order.ClientId ? salesApi.getClientById(order.ClientId).catch(() => null) : Promise.resolve(null),
+            paymentApi.getAll({ orderId: order.OrderId }).catch(() => []),
+          ]);
+
+          return {
+            id: `ORD-${String(order.OrderId).padStart(3, '0')}`,
+            customer: client ? `${client.FirstName || ''} ${client.LastName || ''}`.trim() : (details[0]?.BuyerName || 'Unknown Buyer'),
+            event: details?.map((item) => item.EventTitle).filter(Boolean).join(', ') || 'Multiple events',
+            tickets: details?.reduce((sum, item) => sum + Number(item.Quantity || 0), 0) || 0,
+            total: `$${Number(order.TotalAmount || 0).toFixed(2)}`,
+            status: String(order.Status || 'completed').toLowerCase(),
+            date: order.OrderDate ? new Date(order.OrderDate).toISOString().slice(0, 10) : '',
+          };
+        }));
+
+        setRecentOrders(mapped);
+      } catch (err) {
+        console.error('Failed to load dashboard orders:', err);
+        setRecentOrders([]);
+      }
+    };
+
+    loadRecentOrders();
+  }, []);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -86,7 +121,7 @@ export const DashboardPage = () => {
             render: (val) => <StatusBadge status={val} />,
           },
         ]}
-        data={mockOrders}
+        data={recentOrders}
         searchable={true}
       />
 

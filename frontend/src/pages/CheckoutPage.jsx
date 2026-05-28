@@ -1,12 +1,21 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Button, Card, Input, Select, Alert } from '../components/ui';
 import { CartSummary } from '../components/tickets';
 import { CreditCard, Lock } from 'lucide-react';
 import { useCartStore } from '../store';
 import { useNavigate } from 'react-router-dom';
+import { purchaseApi } from '../utils/api';
+import { onlyDigits, formatCardExpiry, formatCardholderName } from '../utils';
 
 export const CheckoutPage = () => {
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvv, setCardCvv] = useState('');
+  const [cardholderName, setCardholderName] = useState('');
+  const formRef = useRef(null);
 
   const items = useCartStore((s) => s.items);
   const removeItem = useCartStore((s) => s.removeItem);
@@ -15,13 +24,62 @@ export const CheckoutPage = () => {
   const navigate = useNavigate();
 
   const handleCheckout = async (e) => {
-    e.preventDefault();
-    // Simulate checkout process
-    setOrderPlaced(true);
-    setTimeout(() => {
+    e?.preventDefault?.();
+
+    if (!items.length) {
+      setSubmitError('Your cart is empty.');
+      return;
+    }
+
+    const formElement = formRef.current;
+    if (!formElement) {
+      setSubmitError('Checkout form is not ready.');
+      return;
+    }
+
+    const formData = new FormData(formElement);
+    const firstName = String(formData.get('firstName') || '').trim();
+    const lastName = String(formData.get('lastName') || '').trim();
+    const email = String(formData.get('email') || '').trim();
+    const cardholderName = String(formData.get('cardholderName') || '').trim();
+    const buyerName = [firstName, lastName].filter(Boolean).join(' ') || cardholderName || email;
+
+    try {
+      setSubmitting(true);
+      setSubmitError(null);
+
+      const responses = [];
+
+      for (const item of items) {
+        const quantity = Number(item.quantity || 1);
+        const unitPrice = Number(item.price || 0);
+        const totalAmount = Number((unitPrice * quantity).toFixed(2));
+
+        const response = await purchaseApi.create({
+          eventId: item.eventId,
+          eventTitle: item.eventTitle,
+          ticketType: item.sectorName || item.ticketType || 'General Access',
+          quantity,
+          email,
+          name: buyerName,
+          unitPrice,
+          totalAmount,
+          paymentMethod: 'Card',
+        });
+
+        responses.push(response);
+      }
+
+      setOrderPlaced(true);
       clearCart();
-      navigate('/confirmation?orderId=EVT-2024-001');
-    }, 1200);
+      setTimeout(() => {
+        navigate(`/confirmation?orderId=${responses[0]?.orderId || responses[0]?.purchaseId || 'unknown'}`);
+      }, 1200);
+    } catch (err) {
+      setSubmitError(err.response?.data?.message || 'Failed to complete checkout');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (orderPlaced) {
@@ -61,22 +119,30 @@ export const CheckoutPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Checkout Form */}
           <div className="lg:col-span-2">
-            <form onSubmit={handleCheckout} className="space-y-6">
+            <form ref={formRef} onSubmit={handleCheckout} className="space-y-6">
               {/* Billing Information */}
               <Card className="p-6 md:p-8">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
                   Billing Information
                 </h2>
 
+                {submitError && (
+                  <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700">
+                    {submitError}
+                  </div>
+                )}
+
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input
                       type="text"
+                      name="firstName"
                       placeholder="First Name"
                       required
                     />
                     <Input
                       type="text"
+                      name="lastName"
                       placeholder="Last Name"
                       required
                     />
@@ -84,18 +150,21 @@ export const CheckoutPage = () => {
 
                   <Input
                     type="email"
+                    name="email"
                     placeholder="Email Address"
                     required
                   />
 
                   <Input
                     type="text"
+                    name="phoneNumber"
                     placeholder="Phone Number"
                     required
                   />
 
                   <Input
                     type="text"
+                    name="streetAddress"
                     placeholder="Street Address"
                     required
                   />
@@ -103,10 +172,12 @@ export const CheckoutPage = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Input
                       type="text"
+                      name="city"
                       placeholder="City"
                       required
                     />
                     <Select
+                      name="state"
                       options={[
                         { label: 'Select State', value: '' },
                         { label: 'California', value: 'CA' },
@@ -117,6 +188,7 @@ export const CheckoutPage = () => {
                     />
                     <Input
                       type="text"
+                      name="zipCode"
                       placeholder="ZIP Code"
                       required
                     />
@@ -141,28 +213,43 @@ export const CheckoutPage = () => {
                 <div className="space-y-4">
                   <Input
                     type="text"
+                    name="cardNumber"
                     placeholder="Card Number"
                     pattern="[0-9]*"
                     maxLength="16"
+                    inputMode="numeric"
+                    value={cardNumber}
+                    onChange={(e) => setCardNumber(onlyDigits(e.target.value, 16))}
                     required
                   />
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Input
                       type="text"
+                      name="cardExpiry"
                       placeholder="MM/YY"
+                      maxLength="5"
+                      value={cardExpiry}
+                      onChange={(e) => setCardExpiry(formatCardExpiry(e.target.value))}
                       required
                     />
                     <Input
                       type="text"
+                      name="cardCvv"
                       placeholder="CVV"
                       pattern="[0-9]*"
-                      maxLength="4"
+                      maxLength="3"
+                      inputMode="numeric"
+                      value={cardCvv}
+                      onChange={(e) => setCardCvv(onlyDigits(e.target.value, 3))}
                       required
                     />
                     <Input
                       type="text"
+                      name="cardholderName"
                       placeholder="Cardholder Name"
+                      value={cardholderName}
+                      onChange={(e) => setCardholderName(formatCardholderName(e.target.value))}
                       required
                     />
                   </div>
@@ -189,9 +276,10 @@ export const CheckoutPage = () => {
                 variant="primary"
                 size="lg"
                 className="w-full justify-center flex items-center gap-2"
+                disabled={submitting}
               >
                 <Lock size={20} />
-                Place Order - Securely
+                {submitting ? 'Processing...' : 'Place Order - Securely'}
               </Button>
             </form>
           </div>
@@ -202,7 +290,7 @@ export const CheckoutPage = () => {
               items={items}
               onRemove={(id) => removeItem(id)}
               onQuantityChange={(id, qty) => updateQuantity(id, qty)}
-              onCheckout={() => handleCheckout(new Event('submit'))}
+              onCheckout={() => handleCheckout()}
             />
           </div>
         </div>

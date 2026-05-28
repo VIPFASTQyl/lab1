@@ -253,6 +253,40 @@ async function createTablesIfNotExist() {
         }
       }
     }
+
+    const orderDetailColumns = [
+      ['EventId', 'INT'],
+      ['EventTitle', 'VARCHAR(255)'],
+      ['TicketType', 'VARCHAR(100)'],
+      ['BuyerName', 'VARCHAR(255)'],
+      ['BuyerEmail', 'VARCHAR(255)'],
+      ['TotalPrice', 'DECIMAL(10, 2)']
+    ];
+
+    for (const [columnName, columnType] of orderDetailColumns) {
+      try {
+        const [columnRows] = await conn.execute(
+          `SELECT COUNT(*) AS columnCount
+           FROM INFORMATION_SCHEMA.COLUMNS
+           WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'OrderDetails' AND COLUMN_NAME = ?`,
+          [dbConfig.database, columnName]
+        );
+
+        if (!columnRows[0]?.columnCount) {
+          await conn.execute(`ALTER TABLE OrderDetails ADD COLUMN ${columnName} ${columnType}`);
+        }
+      } catch (alterLookupError) {
+        if (!String(alterLookupError.message || '').includes('Duplicate column name')) {
+          console.error('OrderDetails migration warning:', alterLookupError.message);
+        }
+      }
+    }
+
+    try {
+      await conn.execute('ALTER TABLE OrderDetails MODIFY COLUMN TicketId INT NULL');
+    } catch (modifyError) {
+      console.error('OrderDetails TicketId migration warning:', modifyError.message);
+    }
   } finally {
     await conn.release();
   }

@@ -173,9 +173,10 @@ router.get('/orders', authMiddleware, async (req, res) => {
 
     // Get orders for this client
     const orders = await db.all(
-      `SELECT o.OrderId, o.OrderDate, o.TotalAmount, o.Status,
-              od.OrderDetailId, od.EventId, od.Quantity, od.UnitPrice,
-              e.Title as EventTitle, e.Description, e.EventDate
+          `SELECT o.OrderId, o.OrderDate, o.TotalAmount, o.Status,
+              od.DetailId AS OrderDetailId, od.EventId, od.EventTitle AS StoredEventTitle,
+            od.TicketType, od.BuyerName, od.BuyerEmail, od.Quantity, od.UnitPrice, od.TotalPrice,
+            e.Title as JoinedEventTitle, e.Description, e.EventDate
        FROM Orders o
        LEFT JOIN OrderDetails od ON o.OrderId = od.OrderId
        LEFT JOIN Events e ON od.EventId = e.EventId
@@ -203,10 +204,14 @@ router.get('/orders', authMiddleware, async (req, res) => {
       if (order.EventId) {
         groupedOrders[order.OrderId].tickets.push({
           eventId: order.EventId,
-          eventTitle: order.EventTitle,
+          eventTitle: order.StoredEventTitle || order.JoinedEventTitle,
           eventDate: order.EventDate,
+          ticketType: order.TicketType,
+          buyerName: order.BuyerName,
+          buyerEmail: order.BuyerEmail,
           quantity: order.Quantity,
-          unitPrice: order.UnitPrice
+          unitPrice: order.UnitPrice,
+          totalPrice: order.TotalPrice
         });
       }
     });

@@ -25,9 +25,9 @@ api.interceptors.response.use(
   (response) => response.data,
   (error) => {
     if (error.response?.status === 401) {
-      // Handle unauthorized
       localStorage.removeItem('authToken');
-      window.location.href = '/login';
+      localStorage.removeItem('userName');
+      localStorage.removeItem('isAdmin');
     }
     return Promise.reject(error);
   }
@@ -82,6 +82,18 @@ export const orderApi = {
 
 export const paymentApi = {
   processPayment: (data) => api.post('/payments', data),
+  getAll: (params) => api.get('/extras/payments', { params }),
+};
+
+export const purchaseApi = {
+  create: (data) => api.post('/purchases', data),
+};
+
+export const salesApi = {
+  getAllOrders: (params) => api.get('/sales/orders', { params }),
+  getOrderDetails: (orderId) => api.get('/sales/order-details', { params: { orderId } }),
+  getClientById: (id) => api.get(`/sales/clients/${id}`),
+  getAdminOrders: () => api.get('/sales/orders/admin'),
 };
 
 export const authApi = {

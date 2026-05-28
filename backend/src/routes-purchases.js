@@ -48,18 +48,166 @@ function generateTicketCode() {
   return crypto.randomBytes(8).toString('hex').toUpperCase();
 }
 
+function splitName(fullName, fallbackEmail) {
+  const trimmed = String(fullName || '').trim();
+  if (trimmed) {
+    const parts = trimmed.split(/\s+/);
+    return {
+      firstName: parts[0] || 'Guest',
+      lastName: parts.slice(1).join(' ') || 'Buyer'
+    };
+  }
+
+  const emailPrefix = String(fallbackEmail || '').split('@')[0] || 'Guest';
+  return { firstName: emailPrefix, lastName: 'Buyer' };
+}
+
+async function resolveEventId(db, eventId, eventTitle) {
+  if (eventId) {
+    const existingEvent = await db.get(
+      'SELECT EventId FROM Events WHERE EventId = ? LIMIT 1',
+      [Number(eventId)]
+    );
+    if (existingEvent?.EventId) {
+      return Number(existingEvent.EventId);
+    }
+  }
+
+  const trimmedTitle = String(eventTitle || '').trim();
+  if (!trimmedTitle) {
+    return null;
+  }
+
+  const event = await db.get(
+    'SELECT EventId FROM Events WHERE Title = ? ORDER BY EventId DESC LIMIT 1',
+    [trimmedTitle]
+  );
+
+  return event?.EventId || null;
+}
+
 // POST /api/purchases - Create ticket purchase
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { eventId, eventTitle, ticketType, quantity, email, name } = req.body;
+    const {
+      eventId,
+      eventTitle,
+      ticketType,
+      quantity,
+      email,
+      name,
+      unitPrice,
+      totalAmount,
+      paymentMethod
+    } = req.body;
     const userId = req.user.userId;
+    const buyerEmail = email || req.user.email;
+    const buyerName = name || req.user.name || buyerEmail;
+    const resolvedUnitPrice = Number(unitPrice || 0);
+    const resolvedTotalAmount = Number(totalAmount || (resolvedUnitPrice * quantity));
+    const purchasePaymentMethod = paymentMethod || 'Card';
 
     // Validate input
-    if (!eventId || !ticketType || !quantity || quantity < 1) {
+    if ((!eventId && !eventTitle) || !ticketType || !quantity || quantity < 1) {
       return res.status(400).json({ message: 'Invalid ticket information' });
     }
 
+    if (!resolvedUnitPrice || resolvedUnitPrice <= 0) {
+      return res.status(400).json({ message: 'Ticket price is required' });
+    }
+
     const db = await getDbPool();
+    const resolvedEventId = await resolveEventId(db, eventId, eventTitle);
+    if (!resolvedEventId) {
+      return res.status(400).json({ message: 'Event not found' });
+    }
+    const { firstName, lastName } = splitName(buyerName, buyerEmail);
+
+    let client = await db.get(
+      'SELECT ClientId, FirstName, LastName, Email FROM Clients WHERE Email = ?',
+      [buyerEmail]
+    );
+
+    if (!client) {
+      const clientResult = await db.run(
+        `INSERT INTO Clients (FirstName, LastName, Email)
+         VALUES (?, ?, ?)`,
+        [firstName, lastName, buyerEmail]
+      );
+      client = await db.get(
+        'SELECT ClientId, FirstName, LastName, Email FROM Clients WHERE ClientId = ?',
+        [clientResult.lastID]
+      );
+    }
+
+    const orderResult = await db.run(
+      `INSERT INTO Orders (ClientId, TotalAmount, Status, PaymentMethod)
+       VALUES (?, ?, 'completed', ?)`,
+      [client.ClientId, resolvedTotalAmount, purchasePaymentMethod]
+    );
+
+    const orderId = orderResult.lastID;
+
+    const eventRow = await db.get(
+      'SELECT EventId, VenueId FROM Events WHERE EventId = ? LIMIT 1',
+      [resolvedEventId]
+    );
+    const venueSector = eventRow?.VenueId
+      ? await db.get(
+        'SELECT SectorId FROM Sectors WHERE VenueId = ? ORDER BY SectorId ASC LIMIT 1',
+        [eventRow.VenueId]
+      )
+      : null;
+    const fallbackSector = venueSector || await db.get(
+      'SELECT SectorId FROM Sectors ORDER BY SectorId ASC LIMIT 1'
+    );
+    const ticketSeatNumber = `PUR-${generateTicketCode()}`;
+
+    const ticketResult = await db.run(
+      `INSERT INTO Tickets (EventId, SectorId, SeatNumber, Price, Status, TicketType)
+       VALUES (?, ?, ?, ?, 'Sold', ?)`,
+      [
+        resolvedEventId,
+        fallbackSector?.SectorId || 1,
+        ticketSeatNumber,
+        resolvedUnitPrice,
+        ticketType
+      ]
+    );
+
+    await db.run(
+      `INSERT INTO OrderDetails (
+         OrderId,
+         TicketId,
+         EventId,
+         EventTitle,
+         TicketType,
+         BuyerName,
+         BuyerEmail,
+         Quantity,
+         UnitPrice,
+         TotalPrice
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        orderId,
+        ticketResult.lastID,
+        resolvedEventId,
+        eventTitle,
+        ticketType,
+        buyerName,
+        buyerEmail,
+        quantity,
+        resolvedUnitPrice,
+        resolvedTotalAmount
+      ]
+    );
+
+    const paymentResult = await db.run(
+      `INSERT INTO Payments (OrderId, Amount, Status, PaymentMethod)
+       VALUES (?, ?, 'completed', ?)`,
+      [orderId, resolvedTotalAmount, purchasePaymentMethod]
+    );
+
     const tickets = [];
 
     // Create tickets with unique QR codes and one-time-use tokens
@@ -74,9 +222,10 @@ router.post('/', authMiddleware, async (req, res) => {
         ticketCode,
         oneTimeToken,
         qrCodeUrl,
+        eventId: resolvedEventId,
         eventTitle,
         ticketType,
-        holderName: name || req.user.name,
+        holderName: buyerName,
         purchased: new Date().toISOString(),
         used: false
       });
@@ -270,19 +419,21 @@ router.post('/', authMiddleware, async (req, res) => {
             purchaseId, 
             ticketCode, 
             oneTimeToken, 
+            eventId,
             ticketType, 
             eventTitle, 
             holderName, 
             purchaserEmail
-          ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             purchaseId,
             ticket.ticketCode,
             ticket.oneTimeToken,
+            eventId,
             ticket.ticketType,
             eventTitle,
             ticket.holderName,
-            email || req.user.email
+            buyerEmail
           ]
         );
       }
@@ -296,14 +447,20 @@ router.post('/', authMiddleware, async (req, res) => {
       success: true,
       message: 'Tickets purchased successfully!',
       purchaseId: purchaseId,
+      orderId,
+      paymentId: paymentResult.lastID,
       eventTitle: eventTitle,
       ticketCount: quantity,
-      purchaserEmail: email || req.user.email,
-      purchaserName: name || req.user.name,
+      purchaserEmail: buyerEmail,
+      purchaserName: buyerName,
+      totalAmount: resolvedTotalAmount,
+      unitPrice: resolvedUnitPrice,
+      paymentMethod: purchasePaymentMethod,
       tickets: tickets.map((ticket, idx) => ({
         ticketNumber: idx + 1,
         ticketCode: ticket.ticketCode,
         ticketType: ticket.ticketType,
+        eventId: ticket.eventId,
         eventTitle: ticket.eventTitle,
         qrCode: ticket.qrCodeUrl,
         purchasedAt: new Date().toISOString(),

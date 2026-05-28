@@ -20,6 +20,7 @@ import {
   EventsListPage as AdminEventsListPage,
   EventFormPage,
   OrdersPage,
+  PaymentsPage,
   CustomersPage,
   DiscountsPage,
   ReviewsPage,
@@ -105,6 +106,7 @@ export const App = () => {
                           
                           {/* Orders */}
                           <Route path="/orders" element={<OrdersPage />} />
+                          <Route path="/orders/payments" element={<PaymentsPage />} />
                           
                           {/* Customers */}
                           <Route path="/customers" element={<CustomersPage />} />
