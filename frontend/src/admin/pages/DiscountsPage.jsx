@@ -8,6 +8,7 @@ export const DiscountsPage = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     Code: '',
     Description: '',
@@ -56,14 +57,20 @@ export const DiscountsPage = () => {
     try {
       setSaving(true);
       setError(null);
-      await discountsApi.create({
+      const payload = {
         code: formData.Code.trim(),
         description: formData.Description.trim() || null,
         percentage: Number(formData.Percentage),
         startDate: formData.StartDate,
         endDate: formData.EndDate,
-      });
+      };
+      if (editingId) {
+        await discountsApi.update(editingId, payload);
+      } else {
+        await discountsApi.create(payload);
+      }
       setFormData({ Code: '', Description: '', Percentage: '', StartDate: '', EndDate: '' });
+      setEditingId(null);
       await fetchDiscounts();
     } catch (err) {
       console.error('Failed to create discount:', err);
@@ -90,6 +97,22 @@ export const DiscountsPage = () => {
     }
   };
 
+  const handleEdit = (discount) => {
+    setEditingId(discount.id);
+    setFormData({
+      Code: discount.code || '',
+      Description: discount.description || '',
+      Percentage: String(discount.percentage ?? ''),
+      StartDate: discount.startDate || '',
+      EndDate: discount.endDate || '',
+    });
+  };
+
+  const handleCancel = () => {
+    setEditingId(null);
+    setFormData({ Code: '', Description: '', Percentage: '', StartDate: '', EndDate: '' });
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -113,8 +136,6 @@ export const DiscountsPage = () => {
             value={formData.Code}
             onChange={handleChange}
             placeholder="Code"
-            inputMode="numeric"
-            pattern="[0-9]*"
             className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
             required
           />
@@ -156,8 +177,13 @@ export const DiscountsPage = () => {
           />
           <div className="md:col-span-5">
             <Button type="submit" variant="primary" disabled={saving}>
-              {saving ? 'Saving...' : 'Add Discount'}
+              {saving ? 'Saving...' : editingId ? 'Update Discount' : 'Add Discount'}
             </Button>
+            {editingId && (
+              <button type="button" onClick={handleCancel} className="ml-3 px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700">
+                Cancel
+              </button>
+            )}
           </div>
         </form>
       </div>
@@ -178,6 +204,7 @@ export const DiscountsPage = () => {
           ]}
           data={discounts}
           searchable={true}
+          onEdit={handleEdit}
           onDelete={handleDelete}
         />
       )}

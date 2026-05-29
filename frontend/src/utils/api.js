@@ -59,6 +59,13 @@ export const uploadApi = {
 export const ratingsApi = {
   getByEvent: (eventId) => api.get('/extras/ratings', { params: { eventId } }),
   create: (data) => api.post('/extras/ratings', data),
+  getAll: (params) => api.get('/extras/ratings', { params }),
+  update: (id, data) => api.put(`/extras/ratings/${id}`, data),
+  delete: (id) => api.delete(`/extras/ratings/${id}`),
+  getAdminAll: (params) => api.get('/mysql/ratings', { params }),
+  createAdmin: (data) => api.post('/mysql/ratings', data),
+  updateAdmin: (id, data) => api.put(`/mysql/ratings/${id}`, data),
+  deleteAdmin: (id) => api.delete(`/mysql/ratings/${id}`),
 };
 
 export const discountsApi = {
@@ -111,13 +118,30 @@ export const purchaseApi = {
   create: (data) => api.post('/purchases', data),
 };
 
+export const mysqlApi = {
+  getAll: (resource, params) => api.get(`/mysql/${resource}`, { params }),
+  getById: (resource, id) => api.get(`/mysql/${resource}/${id}`),
+  create: (resource, data) => api.post(`/mysql/${resource}`, data),
+  update: (resource, id, data) => api.put(`/mysql/${resource}/${id}`, data),
+  delete: (resource, id) => api.delete(`/mysql/${resource}/${id}`),
+};
+
+
 export const salesApi = {
   getAllOrders: (params) => api.get('/sales/orders', { params }),
   getOrderDetails: (orderId) => api.get('/sales/order-details', { params: { orderId } }),
   getClientById: (id) => api.get(`/sales/clients/${id}`),
+  getClients: (params) => api.get('/sales/clients', { params }),
+  createClient: (data) => api.post('/sales/clients', data),
+  updateClient: (id, data) => api.put(`/sales/clients/${id}`, data),
+  deleteClient: (id) => api.delete(`/sales/clients/${id}`),
   getAdminOrders: () => api.get('/sales/orders/admin'),
+  getTickets: (params) => api.get('/sales/tickets', { params }),
+  getTicketById: (id) => api.get(`/sales/tickets/${id}`),
+  createTicket: (data) => api.post('/sales/tickets', data),
+  updateTicket: (id, data) => api.put(`/sales/tickets/${id}`, data),
+  deleteTicket: (id) => api.delete(`/sales/tickets/${id}`),
 };
-
 export const authApi = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (data) => api.post('/auth/register', data),

@@ -14,6 +14,8 @@ const mapOrder = async (order) => {
     eventId: item.EventId,
     eventTitle: item.EventTitle || 'Unknown Event',
     ticketType: item.TicketType || '',
+    ticketId: item.TicketId,
+    seatNumber: item.SeatNumber || '',
     buyerName: item.BuyerName || `${client?.FirstName || ''} ${client?.LastName || ''}`.trim(),
     buyerEmail: item.BuyerEmail || client?.Email || '',
     quantity: Number(item.Quantity || 0),
@@ -21,12 +23,13 @@ const mapOrder = async (order) => {
     lineTotal: Number(item.TotalPrice || 0) || Number(item.Quantity || 0) * Number(item.UnitPrice || 0),
   }));
 
-  const payment = payments?.[0]
+  const paymentSum = (payments || []).reduce((s, p) => s + Number(p?.Amount || 0), 0);
+  const payment = paymentSum > 0
     ? {
-        paymentId: payments[0].PaymentId,
-        amount: Number(payments[0].Amount || 0),
-        paymentDate: payments[0].PaymentDate,
-        status: payments[0].Status || 'pending',
+        paymentId: payments[0]?.PaymentId,
+        amount: paymentSum,
+        paymentDate: payments[0]?.PaymentDate,
+        status: payments[0]?.Status || 'pending',
       }
     : null;
 
@@ -34,7 +37,7 @@ const mapOrder = async (order) => {
     orderId: order.OrderId,
     id: `ORD-${String(order.OrderId).padStart(3, '0')}`,
     orderDate: order.OrderDate,
-    totalAmount: Number(order.TotalAmount || 0),
+    totalAmount: paymentSum > 0 ? paymentSum : Number(order.TotalAmount || 0),
     orderStatus: String(order.Status || 'completed').toLowerCase(),
     buyer: {
       clientId: order.ClientId,
@@ -73,7 +76,6 @@ export const OrdersPage = () => {
           email: order.buyer?.email || '',
           event: order.items?.map((item) => item.eventTitle).filter(Boolean).join(', ') || 'Multiple events',
           tickets: order.items?.reduce((sum, item) => sum + Number(item.quantity || 0), 0) || 0,
-          total: `$${Number(order.totalAmount || 0).toFixed(2)}`,
           status: String(order.orderStatus || 'completed').toLowerCase(),
           date: order.orderDate ? new Date(order.orderDate).toISOString().slice(0, 10) : '',
         })));
@@ -125,7 +127,6 @@ export const OrdersPage = () => {
               { key: 'email', label: 'Email', sortable: true },
               { key: 'event', label: 'Event(s)', sortable: true },
               { key: 'tickets', label: 'Tickets', sortable: true },
-              { key: 'total', label: 'Total Paid', sortable: true },
               {
                 key: 'status',
                 label: 'Status',
@@ -178,20 +179,25 @@ export const OrdersPage = () => {
                     {selectedOrder.items?.map((item) => (
                       <div key={item.orderDetailId} className="rounded-lg border border-gray-200 dark:border-slate-700 p-3">
                         <div className="flex justify-between gap-4">
-                          <span className="text-gray-900 dark:text-white font-medium">{item.eventTitle}</span>
+                          <span className="text-gray-900 dark:text-white font-medium">
+                            {item.eventTitle}
+                            {item.seatNumber ? ` • Seat ${item.seatNumber}` : ''}
+                          </span>
                           <span className="text-blue-600 dark:text-blue-400 font-semibold">${item.lineTotal.toFixed(2)}</span>
                         </div>
                         <div className="mt-2 flex justify-between text-sm text-gray-600 dark:text-gray-400">
                           <span>Quantity: {item.quantity}</span>
                           <span>Unit price: ${item.unitPrice.toFixed(2)}</span>
                         </div>
+                        {item.ticketId && (
+                          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Ticket ID: {item.ticketId}
+                          </div>
+                        )}
                       </div>
                     ))}
 
-                    <div className="flex justify-between text-lg font-bold pt-2">
-                      <span className="text-gray-900 dark:text-white">Total:</span>
-                      <span className="text-blue-600 dark:text-blue-400">{selectedOrder.total}</span>
-                    </div>
+                    {/* Total removed per request */}
 
                     {selectedOrder.payment && (
                       <div className="mt-4 rounded-lg bg-gray-50 dark:bg-slate-700 p-3">

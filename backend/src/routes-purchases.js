@@ -161,67 +161,57 @@ router.post('/', authMiddleware, async (req, res) => {
     const fallbackSector = venueSector || await db.get(
       'SELECT SectorId FROM Sectors ORDER BY SectorId ASC LIMIT 1'
     );
-    const ticketSeatNumber = `PUR-${generateTicketCode()}`;
-
-    const ticketResult = await db.run(
-      `INSERT INTO Tickets (EventId, SectorId, SeatNumber, Price, Status, TicketType)
-       VALUES (?, ?, ?, ?, 'Sold', ?)`,
-      [
-        resolvedEventId,
-        fallbackSector?.SectorId || 1,
-        ticketSeatNumber,
-        resolvedUnitPrice,
-        ticketType
-      ]
-    );
-
-    await db.run(
-      `INSERT INTO OrderDetails (
-         OrderId,
-         TicketId,
-         EventId,
-         EventTitle,
-         TicketType,
-         BuyerName,
-         BuyerEmail,
-         Quantity,
-         UnitPrice,
-         TotalPrice
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        orderId,
-        ticketResult.lastID,
-        resolvedEventId,
-        eventTitle,
-        ticketType,
-        buyerName,
-        buyerEmail,
-        quantity,
-        resolvedUnitPrice,
-        resolvedTotalAmount
-      ]
-    );
-
-    const paymentResult = await db.run(
-      `INSERT INTO Payments (OrderId, Amount, Status, PaymentMethod)
-       VALUES (?, ?, 'completed', ?)`,
-      [orderId, resolvedTotalAmount, purchasePaymentMethod]
-    );
 
     const tickets = [];
+    const quantityCount = Math.max(1, Number(quantity || 1));
 
-    // Create tickets with unique QR codes and one-time-use tokens
-    for (let i = 0; i < quantity; i++) {
-      const ticketCode = generateTicketCode();
-      const oneTimeToken = generateOneTimeToken(); // One-time use token
-      
-      const qrCodeUrl = await QRCode.toDataURL(ticketCode);
+    for (let i = 0; i < quantityCount; i++) {
+      const ticketSeatNumber = `PUR-${generateTicketCode()}`;
+
+      const ticketResult = await db.run(
+        `INSERT INTO Tickets (EventId, SectorId, SeatNumber, Price, Status, TicketType)
+         VALUES (?, ?, ?, ?, 'Sold', ?)`,
+        [
+          resolvedEventId,
+          fallbackSector?.SectorId || 1,
+          ticketSeatNumber,
+          resolvedUnitPrice,
+          ticketType
+        ]
+      );
+
+      await db.run(
+        `INSERT INTO OrderDetails (
+           OrderId,
+           TicketId,
+           EventId,
+           EventTitle,
+           TicketType,
+           BuyerName,
+           BuyerEmail,
+           Quantity,
+           UnitPrice,
+           TotalPrice
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          orderId,
+          ticketResult.lastID,
+          resolvedEventId,
+          eventTitle,
+          ticketType,
+          buyerName,
+          buyerEmail,
+          1,
+          resolvedUnitPrice,
+          resolvedUnitPrice
+        ]
+      );
 
       tickets.push({
         ticketNumber: i + 1,
-        ticketCode,
-        oneTimeToken,
-        qrCodeUrl,
+        ticketCode: ticketSeatNumber,
+        oneTimeToken: generateOneTimeToken(),
+        qrCodeUrl: await QRCode.toDataURL(ticketSeatNumber),
         eventId: resolvedEventId,
         eventTitle,
         ticketType,
@@ -230,6 +220,12 @@ router.post('/', authMiddleware, async (req, res) => {
         used: false
       });
     }
+
+    const paymentResult = await db.run(
+      `INSERT INTO Payments (OrderId, Amount, Status, PaymentMethod)
+       VALUES (?, ?, 'completed', ?)`,
+      [orderId, resolvedTotalAmount, purchasePaymentMethod]
+    );
 
     // Generate PDF with all tickets
     let pdfPath = null;

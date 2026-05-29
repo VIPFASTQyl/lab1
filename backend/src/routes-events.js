@@ -93,6 +93,44 @@ router.delete('/venues/:id', async (req, res) => {
   try {
     const db = await getDbPool();
     const { id } = req.params;
+
+    // Find all events and sectors under this venue first.
+    const venueEvents = await db.all('SELECT EventId FROM Events WHERE VenueId = ?', [id]);
+    const venueSectors = await db.all('SELECT SectorId FROM Sectors WHERE VenueId = ?', [id]);
+
+    const eventIds = (venueEvents || []).map((row) => row.EventId);
+    const sectorIds = (venueSectors || []).map((row) => row.SectorId);
+
+    if (eventIds.length > 0) {
+      const eventPlaceholders = eventIds.map(() => '?').join(', ');
+
+      // Remove shopping cart rows and order details tied to venue events.
+      await db.run(`DELETE FROM ShoppingCart WHERE EventId IN (${eventPlaceholders})`, eventIds);
+      await db.run(
+        `DELETE FROM OrderDetails
+         WHERE TicketId IN (SELECT TicketId FROM Tickets WHERE EventId IN (${eventPlaceholders}))`,
+        eventIds
+      );
+
+      // Remove dependent rows before deleting events.
+      await db.run(`DELETE FROM Tickets WHERE EventId IN (${eventPlaceholders})`, eventIds);
+      await db.run(`DELETE FROM EventOrganizers WHERE EventId IN (${eventPlaceholders})`, eventIds);
+      await db.run(`DELETE FROM Ratings WHERE EventId IN (${eventPlaceholders})`, eventIds);
+      await db.run(`DELETE FROM Events WHERE EventId IN (${eventPlaceholders})`, eventIds);
+    }
+
+    if (sectorIds.length > 0) {
+      const sectorPlaceholders = sectorIds.map(() => '?').join(', ');
+      // Safety cleanup for any tickets that still reference venue sectors.
+      await db.run(
+        `DELETE FROM OrderDetails
+         WHERE TicketId IN (SELECT TicketId FROM Tickets WHERE SectorId IN (${sectorPlaceholders}))`,
+        sectorIds
+      );
+      await db.run(`DELETE FROM Tickets WHERE SectorId IN (${sectorPlaceholders})`, sectorIds);
+      await db.run(`DELETE FROM Sectors WHERE SectorId IN (${sectorPlaceholders})`, sectorIds);
+    }
+
     const result = await db.run('DELETE FROM Venues WHERE VenueId = ?', [id]);
 
     if (result.changes === 0) {

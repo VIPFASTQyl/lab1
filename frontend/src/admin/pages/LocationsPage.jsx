@@ -8,6 +8,7 @@ export const LocationsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     Name: '',
     Address: '',
@@ -55,13 +56,19 @@ export const LocationsPage = () => {
     try {
       setSaving(true);
       setError(null);
-      await eventApi.createVenue({
+      const payload = {
         Name: formData.Name.trim(),
         Address: formData.Address.trim(),
         City: formData.City.trim(),
         Capacity: formData.Capacity ? Number(formData.Capacity) : 1000,
-      });
+      };
+      if (editingId) {
+        await eventApi.updateVenue(editingId, payload);
+      } else {
+        await eventApi.createVenue(payload);
+      }
       setFormData({ Name: '', Address: '', City: '', Capacity: '' });
+      setEditingId(null);
       await fetchLocations();
     } catch (err) {
       console.error('Failed to create venue:', err);
@@ -84,6 +91,21 @@ export const LocationsPage = () => {
     };
 
     if (window.confirm(`Delete location ${location.name}?`)) runDelete();
+  };
+
+  const handleEdit = (location) => {
+    setEditingId(location.id);
+    setFormData({
+      Name: location.name || '',
+      Address: location.address || '',
+      City: location.city || '',
+      Capacity: location.capacity || '',
+    });
+  };
+
+  const handleCancel = () => {
+    setEditingId(null);
+    setFormData({ Name: '', Address: '', City: '', Capacity: '' });
   };
 
   return (
@@ -141,8 +163,13 @@ export const LocationsPage = () => {
           />
           <div className="md:col-span-4">
             <Button type="submit" variant="primary" disabled={saving}>
-              {saving ? 'Saving...' : 'Add Location'}
+              {saving ? 'Saving...' : editingId ? 'Update Location' : 'Add Location'}
             </Button>
+            {editingId && (
+              <button type="button" onClick={handleCancel} className="ml-3 px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700">
+                Cancel
+              </button>
+            )}
           </div>
         </form>
       </div>
@@ -162,6 +189,7 @@ export const LocationsPage = () => {
           ]}
           data={locations}
           searchable={true}
+          onEdit={handleEdit}
           onDelete={handleDelete}
         />
       )}

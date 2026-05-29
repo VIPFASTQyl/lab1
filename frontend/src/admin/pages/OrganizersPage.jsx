@@ -8,6 +8,7 @@ export const OrganizersPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     Name: '',
     Email: '',
@@ -59,14 +60,19 @@ export const OrganizersPage = () => {
     try {
       setSaving(true);
       setError(null);
-      await organizersApi.create({
+      const payload = {
         Name: formData.Name.trim(),
         Email: formData.Email.trim() || null,
         Phone: formData.Phone.trim() || null,
         Address: formData.Address.trim() || null,
         OrganizerType: formData.OrganizerType.trim(),
         Description: formData.Description.trim() || null,
-      });
+      };
+      if (editingId) {
+        await organizersApi.update(editingId, payload);
+      } else {
+        await organizersApi.create(payload);
+      }
       setFormData({
         Name: '',
         Email: '',
@@ -75,6 +81,7 @@ export const OrganizersPage = () => {
         OrganizerType: '',
         Description: '',
       });
+      setEditingId(null);
       await fetchOrganizers();
     } catch (err) {
       console.error('Failed to create organizer:', err);
@@ -97,6 +104,23 @@ export const OrganizersPage = () => {
     };
 
     if (window.confirm(`Delete organizer ${organizer.name}?`)) runDelete();
+  };
+
+  const handleEdit = (organizer) => {
+    setEditingId(organizer.id);
+    setFormData({
+      Name: organizer.name || '',
+      Email: organizer.email || '',
+      Phone: organizer.phone || '',
+      Address: organizer.address || '',
+      OrganizerType: organizer.organizerType || '',
+      Description: organizer.description || '',
+    });
+  };
+
+  const handleCancel = () => {
+    setEditingId(null);
+    setFormData({ Name: '', Email: '', Phone: '', Address: '', OrganizerType: '', Description: '' });
   };
 
   return (
@@ -168,8 +192,13 @@ export const OrganizersPage = () => {
           />
           <div className="md:col-span-3">
             <Button type="submit" variant="primary" disabled={saving}>
-              {saving ? 'Saving...' : 'Add Organizer'}
+              {saving ? 'Saving...' : editingId ? 'Update Organizer' : 'Add Organizer'}
             </Button>
+            {editingId && (
+              <button type="button" onClick={handleCancel} className="ml-3 px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700">
+                Cancel
+              </button>
+            )}
           </div>
         </form>
       </div>
@@ -191,6 +220,7 @@ export const OrganizersPage = () => {
           ]}
           data={organizers}
           searchable={true}
+          onEdit={handleEdit}
           onDelete={handleDelete}
         />
       )}

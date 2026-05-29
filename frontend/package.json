@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "vite --host",
+    "rev": "vite --host --open http://localhost:3000/login",
     "build": "vite build",
     "preview": "vite preview"
   },

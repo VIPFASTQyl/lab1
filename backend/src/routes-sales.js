@@ -244,6 +244,7 @@ router.get('/orders/admin', async (req, res) => {
          c.Email,
          c.Address,
          od.DetailId AS OrderDetailId,
+         od.TicketId,
          od.EventId,
          od.EventTitle AS StoredEventTitle,
          od.TicketType,
@@ -252,6 +253,7 @@ router.get('/orders/admin', async (req, res) => {
          od.Quantity,
          od.UnitPrice,
          od.TotalPrice,
+         t.SeatNumber,
          e.Title AS EventTitle,
          e.Category AS EventCategory,
          e.EventDate,
@@ -262,6 +264,7 @@ router.get('/orders/admin', async (req, res) => {
        FROM Orders o
        LEFT JOIN Clients c ON c.ClientId = o.ClientId
        LEFT JOIN OrderDetails od ON od.OrderId = o.OrderId
+      LEFT JOIN Tickets t ON t.TicketId = od.TicketId
        LEFT JOIN Events e ON e.EventId = od.EventId
        LEFT JOIN Payments p ON p.OrderId = o.OrderId
        ORDER BY o.OrderDate DESC, od.DetailId ASC, p.PaymentId DESC`
@@ -304,6 +307,8 @@ router.get('/orders/admin', async (req, res) => {
           eventCategory: row.EventCategory || '',
           eventDate: row.EventDate,
           ticketType: row.TicketType || '',
+          ticketId: row.TicketId,
+          seatNumber: row.SeatNumber || '',
           buyerName: row.BuyerName || `${row.FirstName || ''} ${row.LastName || ''}`.trim(),
           buyerEmail: row.BuyerEmail || row.Email || '',
           quantity: Number(row.Quantity || 0),

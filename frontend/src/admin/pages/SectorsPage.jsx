@@ -9,6 +9,7 @@ export const SectorsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     VenueId: '',
     SectorName: '',
@@ -69,14 +70,20 @@ export const SectorsPage = () => {
     try {
       setSaving(true);
       setError(null);
-      await eventApi.createSector({
+      const payload = {
         VenueId: Number(formData.VenueId),
         SectorName: formData.SectorName.trim(),
         Capacity: Number(formData.Capacity),
         BasePrice: Number(formData.BasePrice),
         Description: formData.Description.trim() || null,
-      });
+      };
+      if (editingId) {
+        await eventApi.updateSector(editingId, payload);
+      } else {
+        await eventApi.createSector(payload);
+      }
       setFormData({ VenueId: '', SectorName: '', Capacity: '', BasePrice: '', Description: '' });
+      setEditingId(null);
       await fetchSectors();
     } catch (err) {
       console.error('Failed to create sector:', err);
@@ -99,6 +106,22 @@ export const SectorsPage = () => {
     };
 
     if (window.confirm(`Delete sector ${sector.sectorName}?`)) runDelete();
+  };
+
+  const handleEdit = (sector) => {
+    setEditingId(sector.id);
+    setFormData({
+      VenueId: sector.venueId || '',
+      SectorName: sector.sectorName || '',
+      Capacity: sector.capacity || '',
+      BasePrice: sector.basePrice || '',
+      Description: sector.description || '',
+    });
+  };
+
+  const handleCancel = () => {
+    setEditingId(null);
+    setFormData({ VenueId: '', SectorName: '', Capacity: '', BasePrice: '', Description: '' });
   };
 
   return (
@@ -172,8 +195,13 @@ export const SectorsPage = () => {
           />
           <div className="md:col-span-5">
             <Button type="submit" variant="primary" disabled={saving}>
-              {saving ? 'Saving...' : 'Add Sector'}
+              {saving ? 'Saving...' : editingId ? 'Update Sector' : 'Add Sector'}
             </Button>
+            {editingId && (
+              <button type="button" onClick={handleCancel} className="ml-3 px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700">
+                Cancel
+              </button>
+            )}
           </div>
         </form>
       </div>
@@ -194,6 +222,7 @@ export const SectorsPage = () => {
           ]}
           data={sectors}
           searchable={true}
+          onEdit={handleEdit}
           onDelete={handleDelete}
         />
       )}
