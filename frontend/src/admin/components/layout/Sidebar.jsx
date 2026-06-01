@@ -27,14 +27,7 @@ const menuItems = [
       { label: 'Add New Event', path: '/admin/events/new' },
     ],
   },
-  {
-    label: 'Locations',
-    icon: MapPin,
-    submenu: [
-      { label: 'All Locations', path: '/admin/locations' },
-      { label: 'Add Location', path: '/admin/locations/new' },
-    ],
-  },
+  { label: 'Locations', icon: MapPin, path: '/admin/locations' },
   { label: 'Sectors', icon: MapPin, path: '/admin/sectors' },
   { label: 'Tickets', icon: Ticket, path: '/admin/tickets' },
   {

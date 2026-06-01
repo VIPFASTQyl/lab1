@@ -118,6 +118,11 @@ export const purchaseApi = {
   create: (data) => api.post('/purchases', data),
 };
 
+export const dashboardApi = {
+  getSummary: () => api.get('/dashboard/summary'),
+  getEvents: () => api.get('/dashboard/events'),
+};
+
 export const mysqlApi = {
   getAll: (resource, params) => api.get(`/mysql/${resource}`, { params }),
   getById: (resource, id) => api.get(`/mysql/${resource}/${id}`),
