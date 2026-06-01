@@ -121,7 +121,7 @@ export const DataTable = ({
                       {onView && (
                         <button
                           onClick={() => onView(row)}
-                          className="px-3 py-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900 rounded"
+                          className="px-3 py-1 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900 rounded"
                         >
                           View
                         </button>
@@ -178,7 +178,7 @@ export const DataTable = ({
                 className={clsx(
                   'px-3 py-1 rounded border',
                   page === p
-                    ? 'bg-blue-600 text-white border-blue-600'
+                    ? 'bg-primary-600 text-white border-primary-600'
                     : 'border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700'
                 )}
               >

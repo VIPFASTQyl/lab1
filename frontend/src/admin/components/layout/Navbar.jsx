@@ -24,7 +24,7 @@ export const Navbar = ({ onMenuClick, isDark, setIsDark }) => {
               <input
                 type="text"
                 placeholder="Search events, orders..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
           </div>
@@ -58,7 +58,7 @@ export const Navbar = ({ onMenuClick, isDark, setIsDark }) => {
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
                 className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition"
               >
-                <div className="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+                <div className="h-8 w-8 bg-primary-600 rounded-full flex items-center justify-center text-white font-bold">
                   A
                 </div>
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:block">

@@ -64,20 +64,20 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
       {/* Sidebar */}
       <aside
         className={clsx(
-          'fixed left-0 top-0 h-full w-64 bg-slate-900 text-white z-40 transition-transform duration-300 md:translate-x-0 overflow-y-auto',
+          'fixed left-0 top-0 h-full w-64 bg-dark-900 text-white z-40 transition-transform duration-300 md:translate-x-0 overflow-y-auto',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* Close Button (Mobile) */}
         <button
           onClick={() => setIsOpen(false)}
-          className="md:hidden absolute top-4 right-4 p-2 hover:bg-slate-800 rounded"
+          className="md:hidden absolute top-4 right-4 p-2 hover:bg-dark-800 rounded"
         >
           <X className="h-6 w-6" />
         </button>
 
         {/* Logo */}
-        <div className="p-6 border-b border-slate-700">
+        <div className="p-6 border-b border-dark-700">
           <Link to="/admin/events" className="flex items-center gap-2 font-bold text-lg">
             <Calendar className="h-6 w-6" />
             <span>MADVERSE Admin</span>
@@ -92,7 +92,7 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
                 <>
                   <button
                     onClick={() => toggleSubmenu(item.label)}
-                    className="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-slate-800 transition text-left"
+                    className="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-dark-800 transition text-left"
                   >
                     <item.icon className="h-5 w-5" />
                     <span className="flex-1">{item.label}</span>
@@ -104,12 +104,12 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
                     />
                   </button>
                   {expandedMenu === item.label && (
-                    <div className="ml-4 mt-2 space-y-1 border-l border-slate-700 pl-4">
+                    <div className="ml-4 mt-2 space-y-1 border-l border-dark-700 pl-4">
                       {item.submenu.map((sub) => (
                         <Link
                           key={sub.path}
                           to={sub.path}
-                          className="block px-4 py-2 rounded-lg hover:bg-slate-800 transition text-sm text-slate-300 hover:text-white"
+                          className="block px-4 py-2 rounded-lg hover:bg-dark-800 transition text-sm text-neutral-300 hover:text-white"
                         >
                           {sub.label}
                         </Link>
@@ -120,7 +120,7 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
               ) : (
                 <Link
                   to={item.path}
-                  className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-slate-800 transition"
+                  className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-dark-800 transition"
                 >
                   <item.icon className="h-5 w-5" />
                   <span>{item.label}</span>
@@ -134,7 +134,7 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 md:hidden z-30 p-3 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-700"
+        className="fixed bottom-6 right-6 md:hidden z-30 p-3 bg-primary-600 text-white rounded-lg shadow-lg hover:bg-primary-700"
       >
         <Menu className="h-6 w-6" />
       </button>
