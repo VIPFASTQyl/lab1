@@ -4,8 +4,8 @@ import { authMiddleware } from './middleware-auth.js';
 
 const router = express.Router();
 
-// Apply auth middleware to all routes
-router.use(authMiddleware);
+// NOTE: allow public (unauthenticated) GET access to events, sectors, and venues.
+// Require auth only for create/update/delete operations below.
 
 // ===========================
 // VENUES ENDPOINTS
@@ -40,8 +40,8 @@ router.get('/venues/:id', async (req, res) => {
   }
 });
 
-// POST create new venue
-router.post('/venues', async (req, res) => {
+// POST create new venue (auth required)
+router.post('/venues', authMiddleware, async (req, res) => {
   try {
     const db = await getDbPool();
     const { Name, Address, Country, City, Capacity } = req.body;
@@ -66,8 +66,8 @@ router.post('/venues', async (req, res) => {
   }
 });
 
-// PUT update venue
-router.put('/venues/:id', async (req, res) => {
+// PUT update venue (auth required)
+router.put('/venues/:id', authMiddleware, async (req, res) => {
   try {
     const db = await getDbPool();
     const { id } = req.params;
@@ -88,8 +88,8 @@ router.put('/venues/:id', async (req, res) => {
   }
 });
 
-// DELETE venue
-router.delete('/venues/:id', async (req, res) => {
+// DELETE venue (auth required)
+router.delete('/venues/:id', authMiddleware, async (req, res) => {
   try {
     const db = await getDbPool();
     const { id } = req.params;
@@ -187,8 +187,8 @@ router.get('/sectors/:id', async (req, res) => {
   }
 });
 
-// POST create new sector
-router.post('/sectors', async (req, res) => {
+// POST create new sector (auth required)
+router.post('/sectors', authMiddleware, async (req, res) => {
   try {
     const db = await getDbPool();
     const { VenueId, SectorName, Capacity, BasePrice, Description } = req.body;
@@ -209,8 +209,8 @@ router.post('/sectors', async (req, res) => {
   }
 });
 
-// PUT update sector
-router.put('/sectors/:id', async (req, res) => {
+// PUT update sector (auth required)
+router.put('/sectors/:id', authMiddleware, async (req, res) => {
   try {
     const db = await getDbPool();
     const { id } = req.params;
@@ -231,8 +231,8 @@ router.put('/sectors/:id', async (req, res) => {
   }
 });
 
-// DELETE sector
-router.delete('/sectors/:id', async (req, res) => {
+// DELETE sector (auth required)
+router.delete('/sectors/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -291,8 +291,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST create new event
-router.post('/', async (req, res) => {
+// POST create new event (auth required)
+router.post('/', authMiddleware, async (req, res) => {
   try {
     const db = await getDbPool();
     const { Title, Description, Category, EventDate, StartTime, EndTime, VenueId, Price, DiscountId, Status, ImageUrl } = req.body;
@@ -315,8 +315,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT update event
-router.put('/:id', async (req, res) => {
+// PUT update event (auth required)
+router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const db = await getDbPool();
     const { id } = req.params;
@@ -338,8 +338,8 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE event
-router.delete('/:id', async (req, res) => {
+// DELETE event (auth required)
+router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const db = await getDbPool();
     const { id } = req.params;

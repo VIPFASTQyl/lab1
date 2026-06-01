@@ -62,7 +62,7 @@ export const TicketsPage = () => {
         grouped[key].total += 1;
         if (ticket.Status === 'Sold') {
           grouped[key].sold += 1;
-          grouped[key].revenue += ticket.Price;
+          grouped[key].revenue += Number(ticket.Price || 0);
         } else {
           grouped[key].available += 1;
         }
@@ -135,7 +135,6 @@ export const TicketsPage = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-          onEdit={handleEdit}
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -157,7 +156,7 @@ export const TicketsPage = () => {
         ticketType: formData.ticketType,
       });
       setFormData({ eventId: '', sectorId: '', seatNumber: '', price: '', ticketType: 'General' });
-      await fetchTicketSummary();
+      await fetchTickets();
     } catch (err) {
       console.error('Failed to create ticket:', err);
       setError(err.response?.data?.message || 'Failed to add ticket');
@@ -264,6 +263,7 @@ export const TicketsPage = () => {
         </div>
       ) : (
         <div className="space-y-6">
+          <div className="overflow-visible">
           <DataTable
             title="Ticket Summary by Event"
             columns={[
@@ -276,9 +276,12 @@ export const TicketsPage = () => {
               { key: 'status', label: 'Status', render: (val) => <StatusBadge status={val} /> },
             ]}
             data={ticketSummary}
+            pageSize={1000}
             searchable={true}
           />
+          </div>
 
+          <div className="overflow-visible">
           <DataTable
             title="All Tickets"
             columns={[
@@ -293,7 +296,9 @@ export const TicketsPage = () => {
             data={tickets}
             searchable={true}
             onDelete={handleDelete}
+            pageSize={1000}
           />
+          </div>
         </div>
       )}
     </div>

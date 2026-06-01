@@ -18,7 +18,7 @@ export const Navbar = ({ onMenuClick, isDark, setIsDark }) => {
         <div className="flex items-center justify-between">
           {/* Left: Logo + Search */}
           <div className="flex items-center gap-4 flex-1">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">EventHub</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">MADVERSE</h1>
             <div className="hidden md:flex relative flex-1 max-w-xs">
               <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
               <input

@@ -16,7 +16,6 @@ import {
 // Admin imports
 import { AdminLayout } from './admin/components/layout';
 import {
-  DashboardPage,
   EventsListPage as AdminEventsListPage,
   EventFormPage,
   OrdersPage,
@@ -88,7 +87,7 @@ export const App = () => {
                     <PrivateAdminRoute>
                       <AdminLayout isDark={isDark} setIsDark={setIsDark}>
                         <Routes>
-                          <Route path="/" element={<DashboardPage />} />
+                          <Route path="/" element={<Navigate to="/admin/events" replace />} />
                           
                           {/* Events */}
                           <Route path="/events" element={<AdminEventsListPage />} />

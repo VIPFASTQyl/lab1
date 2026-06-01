@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import {
   Menu,
   X,
-  LayoutDashboard,
   Calendar,
   MapPin,
   Ticket,
@@ -18,7 +17,6 @@ import {
 import clsx from 'clsx';
 
 const menuItems = [
-  { label: 'Dashboard', icon: LayoutDashboard, path: '/admin' },
   {
     label: 'Events',
     icon: Calendar,
@@ -80,9 +78,9 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
 
         {/* Logo */}
         <div className="p-6 border-b border-slate-700">
-          <Link to="/admin" className="flex items-center gap-2 font-bold text-lg">
-            <LayoutDashboard className="h-6 w-6" />
-            <span>EventHub Admin</span>
+          <Link to="/admin/events" className="flex items-center gap-2 font-bold text-lg">
+            <Calendar className="h-6 w-6" />
+            <span>MADVERSE Admin</span>
           </Link>
         </div>
 

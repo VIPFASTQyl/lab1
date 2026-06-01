@@ -50,17 +50,23 @@ export const HomePage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-dark-900">
+    <div
+      className="min-h-screen text-slate-950 dark:text-white"
+      style={{
+        backgroundImage:
+          'linear-gradient(180deg, #fff8c7 0%, #ffb020 24%, #f97316 45%, #ef4444 66%, #174ba2 100%)',
+      }}
+    >
       {/* Hero Section */}
-      <section className="relative py-12 md:py-20 lg:py-28 bg-gradient-to-br from-primary-600 to-secondary-600 overflow-hidden">
+      <section className="relative py-12 md:py-20 lg:py-28 bg-gradient-to-br from-[#f97316] via-[#ef4444] to-[#174ba2] overflow-hidden border-b border-black/20">
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full -mr-32 -mt-32" />
-          <div className="absolute bottom-0 left-0 w-72 h-72 bg-white rounded-full -ml-24 -mb-24" />
+          <div className="absolute top-0 right-0 w-96 h-96 bg-[#fff8c7] -mr-32 -mt-32" />
+          <div className="absolute bottom-0 left-0 w-72 h-72 bg-[#ffb020] -ml-24 -mb-24" />
         </div>
 
         <div className="page-container relative z-10">
           <div className="text-center mb-12">
-            <h1 className="section-title text-white mb-4">
+              <h1 className="section-title text-white mb-4">
               Discover Amazing Events
             </h1>
             <p className="text-xl text-white/90 max-w-2xl mx-auto mb-8">
@@ -71,9 +77,9 @@ export const HomePage = () => {
       </section>
 
       {/* Featured Events Carousel */}
-      <section className="py-12 md:py-20 bg-white dark:bg-dark-900">
+      <section className="py-12 md:py-20 bg-[#fff8c7] dark:bg-[#061b33] border-y border-black/20">
         <div className="page-container">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Featured Events</h2>
+          <h2 className="text-3xl font-bold text-slate-950 dark:text-white mb-8">Featured Events</h2>
           {loadingEvents ? (
             <div className="text-center py-12">Loading featured events...</div>
           ) : events.length === 0 ? (
@@ -107,36 +113,14 @@ export const HomePage = () => {
         </div>
       </section>
 
-      {/* Categories Section */}
-      <section className="py-12 md:py-20 bg-gray-50 dark:bg-dark-800">
-        <div className="page-container">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Browse by Category</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {categories.map((category) => (
-              <Link
-                key={category.id}
-                to={`/events?category=${category.name.toLowerCase()}`}
-                className={`relative p-6 rounded-xl text-white font-bold text-center transition-transform hover:scale-105 overflow-hidden group cursor-pointer`}
-              >
-                <div className={`absolute inset-0 bg-gradient-to-br ${category.color}`} />
-                <div className="relative z-10 flex flex-col items-center justify-center h-full gap-2">
-                  <span className="text-4xl">{category.icon}</span>
-                  <span>{category.name}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Upcoming Events */}
-      <section className="py-12 md:py-20 bg-white dark:bg-dark-900">
+      <section className="py-12 md:py-20 bg-[#ffef91] dark:bg-[#0d3768] border-y border-black/20">
         <div className="page-container">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Upcoming Events</h2>
+            <h2 className="text-3xl font-bold text-slate-950 dark:text-white">Upcoming Events</h2>
             <Link
               to="/events"
-              className="inline-flex items-center gap-2 text-primary-600 dark:text-primary-400 hover:gap-3 transition-all font-semibold"
+              className="inline-flex items-center gap-2 text-[#174ba2] dark:text-white hover:gap-3 transition-all font-semibold"
             >
               View All <ArrowRight size={20} />
             </Link>
@@ -157,7 +141,7 @@ export const HomePage = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-12 md:py-20 bg-gradient-to-r from-primary-600 to-secondary-600">
+      <section className="py-12 md:py-20 bg-gradient-to-r from-[#174ba2] via-[#0f4585] to-[#020814] border-t border-black/20">
         <div className="page-container text-center text-white">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">Never Miss an Event</h2>
           <p className="text-lg text-white/90 mb-8 max-w-2xl mx-auto">

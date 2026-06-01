@@ -43,36 +43,36 @@ export const Footer = () => {
   ];
 
   return (
-    <footer className="bg-dark-900 text-gray-300 dark:text-gray-400 border-t border-dark-700">
+    <footer className="bg-gradient-to-r from-white via-[#14b8a6] to-[#041e33] text-[#041e33] border-t border-black/20">
       <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-12 md:py-16">
         {/* Top Section */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 mb-12">
           {/* Brand */}
           <div className="md:col-span-1">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-600 to-secondary-600 flex items-center justify-center text-white font-bold">
+              <div className="w-8 h-8 bg-gradient-to-br from-[#14b8a6] to-[#041e33] flex items-center justify-center text-white font-bold">
                 Ξ
               </div>
-              <span className="text-lg font-bold text-white">EventHub</span>
+              <span className="text-lg font-bold text-[#041e33]">MADVERSE</span>
             </Link>
-            <p className="text-sm text-gray-500 dark:text-gray-600 mb-4">
+            <p className="text-sm text-[#0f766e] mb-4">
               Discover and purchase tickets to the best events in your area.
             </p>
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm">
-                <Mail size={16} className="text-primary-500" />
-                <a href="mailto:support@eventhub.com" className="hover:text-primary-400 transition-colors">
-                  support@eventhub.com
+                <Mail size={16} className="text-[#041e33]" />
+                <a href="mailto:support@madverse.com" className="hover:text-white transition-colors">
+                  support@madverse.com
                 </a>
               </div>
               <div className="flex items-center gap-2 text-sm">
-                <Phone size={16} className="text-primary-500" />
-                <a href="tel:+1234567890" className="hover:text-primary-400 transition-colors">
+                <Phone size={16} className="text-[#041e33]" />
+                <a href="tel:+1234567890" className="hover:text-white transition-colors">
                   +1 (234) 567-890
                 </a>
               </div>
               <div className="flex items-center gap-2 text-sm">
-                <MapPin size={16} className="text-primary-500" />
+                <MapPin size={16} className="text-[#041e33]" />
                 <span>123 Event Street, NY 10001</span>
               </div>
             </div>
@@ -81,13 +81,13 @@ export const Footer = () => {
           {/* Links */}
           {footerSections.map((section) => (
             <div key={section.title}>
-              <h3 className="font-semibold text-white mb-4">{section.title}</h3>
+              <h3 className="font-semibold text-[#041e33] mb-4">{section.title}</h3>
               <ul className="space-y-2">
                 {section.links.map((link) => (
                   <li key={link.label}>
                     <a
                       href={link.href}
-                      className="text-sm hover:text-primary-400 transition-colors"
+                      className="text-sm hover:text-[#041e33] transition-colors"
                     >
                       {link.label}
                     </a>
@@ -99,11 +99,11 @@ export const Footer = () => {
         </div>
 
         {/* Divider */}
-        <div className="border-t border-dark-700 py-8">
+        <div className="border-t border-black/20 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             {/* Copyright */}
-            <p className="text-sm text-gray-500 dark:text-gray-600">
-              © {currentYear} EventHub. All rights reserved.
+            <p className="text-sm text-[#0f766e]">
+              © {currentYear} MADVERSE. All rights reserved.
             </p>
 
             {/* Social Links */}
@@ -114,10 +114,10 @@ export const Footer = () => {
                   href={social.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-2 hover:bg-dark-800 rounded-lg transition-colors group"
+                  className="p-2 hover:bg-white/40 transition-colors group"
                   title={social.label}
                 >
-                  <social.icon size={20} className="text-gray-400 group-hover:text-primary-400 transition-colors" />
+                  <social.icon size={20} className="text-[#041e33] group-hover:text-white transition-colors" />
                 </a>
               ))}
             </div>

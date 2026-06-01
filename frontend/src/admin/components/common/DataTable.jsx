@@ -11,12 +11,13 @@ export const DataTable = ({
   searchable = true,
   title = 'Data Table',
   addButton = null,
+  pageSize: propPageSize = 10,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState(null);
   const [sortDesc, setSortDesc] = useState(false);
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const pageSize = propPageSize;
 
   // Filter and sort
   let filtered = data.filter(row =>
