@@ -134,18 +134,15 @@ app.use((req, res) => {
   res.status(404).json({ message: 'Not found' });
 });
 
-function startServer(port, attempt = 0, maxAttempts = 5) {
+function startServer(port) {
   const server = app.listen(port, () => {
     console.log(`TicketApp API running on port ${port}`);
   });
 
   server.on('error', (err) => {
-    if (err && err.code === 'EADDRINUSE' && attempt < maxAttempts) {
-      const nextPort = Number(port) + 1;
-      console.warn(`Port ${port} in use, trying ${nextPort} (attempt ${attempt + 1})`);
-      // Give the OS a small moment then try next port
-      setTimeout(() => startServer(nextPort, attempt + 1, maxAttempts), 250);
-      return;
+    if (err && err.code === 'EADDRINUSE') {
+      console.error(`Port ${port} is already in use. Stop the other process or set PORT in backend/.env`);
+      process.exit(1);
     }
 
     console.error('Failed to start server:', err);
@@ -153,4 +150,4 @@ function startServer(port, attempt = 0, maxAttempts = 5) {
   });
 }
 
-startServer(Number(PORT) || 5000);
+startServer(Number(PORT) || 5001);

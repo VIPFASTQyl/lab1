@@ -2,7 +2,9 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-export const PORT = process.env.PORT || 5000;
+export const PORT = process.env.PORT || 5001;
+
+export const apiBaseUrl = process.env.API_BASE_URL || `http://localhost:${PORT}`;
 
 export const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
@@ -25,7 +27,7 @@ export const emailConfig = {
   emailPassword: process.env.EMAIL_PASSWORD || 'your-app-password'
 };
 
-export const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+export const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
 
 export const stripeConfig = {
   secretKey: process.env.STRIPE_SECRET_KEY,

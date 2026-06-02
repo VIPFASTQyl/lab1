@@ -2,7 +2,7 @@ import express from 'express';
 import { getDbPool } from './db.js';
 import { authMiddleware } from './middleware-auth.js';
 import nodemailer from 'nodemailer';
-import { emailConfig } from './config.js';
+import { emailConfig, apiBaseUrl } from './config.js';
 import QRCode from 'qrcode';
 import crypto from 'crypto';
 import { generateTicketsPDF, generateOneTimeToken } from './pdf-generator.js';
@@ -371,7 +371,7 @@ router.post('/', authMiddleware, async (req, res) => {
 
               <!-- Download PDF Button -->
               <div style="text-align: center; margin: 30px 0;">
-                <a href="http://localhost:5000/api/purchases/download/${purchaseId}" 
+                <a href="${apiBaseUrl}/api/purchases/download/${purchaseId}" 
                    style="
                      display: inline-block;
                      background: linear-gradient(135deg, #c41e3a 0%, #8b1530 100%);
