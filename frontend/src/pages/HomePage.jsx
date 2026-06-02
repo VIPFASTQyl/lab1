@@ -140,25 +140,10 @@ export const HomePage = () => {
         </div>
       </section>
 
+
+  
       {/* CTA Section */}
-      <section className="py-12 md:py-20 bg-gradient-to-r from-[#174ba2] via-[#0f4585] to-[#020814] border-t border-black/20">
-        <div className="page-container text-center text-white">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Never Miss an Event</h2>
-          <p className="text-lg text-white/90 mb-8 max-w-2xl mx-auto">
-            Subscribe to our newsletter and get exclusive deals on upcoming events
-          </p>
-          <div className="max-w-md mx-auto flex gap-2">
-            <Input
-              type="email"
-              placeholder="Enter your email"
-              className="text-gray-900 dark:text-white bg-white"
-            />
-            <Button variant="secondary" size="md">
-              Subscribe
-            </Button>
-          </div>
-        </div>
-      </section>
+      
     </div>
   );
 };
