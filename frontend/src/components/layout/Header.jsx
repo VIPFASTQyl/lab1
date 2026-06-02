@@ -95,17 +95,7 @@ export const Header = ({ onCartClick, cartItemsCount = 0 }) => {
             </button>
 
             {/* Cart Button */}
-            <button
-              onClick={onCartClick}
-              className="relative p-2 hover:bg-black/10 transition-colors"
-            >
-              <ShoppingCart size={20} className="text-slate-950" />
-              {cartItemsCount > 0 && (
-                <span className="absolute top-0 right-0 w-5 h-5 bg-accent-600 text-white text-xs flex items-center justify-center font-semibold">
-                  {cartItemsCount > 9 ? '9+' : cartItemsCount}
-                </span>
-              )}
-            </button>
+            
 
             {/* User Menu */}
             <div className="hidden md:relative md:flex items-center">
