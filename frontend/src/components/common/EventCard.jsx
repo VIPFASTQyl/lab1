@@ -75,22 +75,7 @@ export const EventCard = ({ event, variant = 'grid', onClick }) => {
         </div>
 
         {/* Favorite Button */}
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            setIsFavorite(!isFavorite);
-          }}
-          className="absolute top-3 right-3 p-2 rounded-full bg-white dark:bg-dark-800 shadow-md hover:shadow-lg transition-all duration-200 group-hover:scale-110"
-        >
-          <Heart
-            size={20}
-            className={`transition-colors ${
-              isFavorite
-                ? 'fill-secondary-600 text-secondary-600'
-                : 'text-gray-400 dark:text-gray-500'
-            }`}
-          />
-        </button>
+       
 
       </div>
 
@@ -105,16 +90,13 @@ export const EventCard = ({ event, variant = 'grid', onClick }) => {
             <Calendar size={16} />
             <span>{new Date(event.date).toLocaleDateString()}</span>
           </div>
-          <div className="flex items-center gap-2 line-clamp-1">
-            <MapPin size={16} />
-            <span className="line-clamp-1">{event.location}</span>
-          </div>
+         
         </div>
 
         {/* Price */}
         <div className="pt-4 border-t border-gray-200 dark:border-dark-700 flex items-center justify-between">
           <span className="text-lg font-bold text-primary-600 dark:text-primary-400">
-            From ${event.priceFrom}
+             Learn More{event.priceFrom}
           </span>
           <button
             type="button"

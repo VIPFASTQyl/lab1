@@ -269,12 +269,7 @@ export const EventDetailPage = () => {
             <div className="max-w-5xl mx-auto">
               {showAlert && (
                 <div className="mb-8">
-                  <Alert
-                    type="success"
-                    title="Event Details"
-                    message="This page now reflects the event saved from the admin dashboard."
-                    onClose={() => setShowAlert(false)}
-                  />
+                 
                 </div>
               )}
 
